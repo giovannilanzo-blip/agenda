@@ -5380,11 +5380,14 @@ async function scriviProtocollo(num, data, quali){
 
 async function applicaProtocollo(){
   var num = String(STATO_IMPORT.prot.numero || "").trim().replace(/[^0-9]/g, "");
-  var dt = String(STATO_IMPORT.prot.data || "").trim();
-  var m = dt.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})$/);
+  /* il campo della data tiene soltanto cifre e barre messe da sé: contano le
+     otto cifre, giorno, mese e anno */
+  var cifre = String(STATO_IMPORT.prot.data || "").replace(/\D/g, "");
   if(!num){ notaFlash("Scrivi il numero di protocollo come lo leggi nel timbro."); return; }
-  if(!m){ notaFlash("La data del protocollo va scritta come gg/mm/aaaa."); return; }
-  var gg = due(m[1]), mm = due(m[2]), aa = m[3].length === 4 ? m[3].slice(2) : m[3];
+  if(cifre.length < 8){ notaFlash("La data del protocollo è incompleta: servono otto cifre, giorno, mese e anno."); return; }
+  var g = Number(cifre.slice(0, 2)), me = Number(cifre.slice(2, 4)), an = Number(cifre.slice(4, 8));
+  if(!dataValida(an, me, g)){ notaFlash("La data del protocollo va scritta come gg/mm/aaaa: questa data non esiste."); return; }
+  var gg = cifre.slice(0, 2), mm = cifre.slice(2, 4), aa = cifre.slice(6, 8);
   if(num.length < 7) num = ("0000000" + num).slice(-7);
 
   var quali = vociConConvocazione();
@@ -6364,11 +6367,56 @@ document.addEventListener("change", function(ev){
   if(li) li.classList.toggle("scelta", sp.checked);
 });
 
+/* Sul telefono il tastierino numerico non ha la barra: i due campi del
+   protocollo accettano soltanto cifre, e la data si mette le barre da sé,
+   «04092026» diventa «04/09/2026». Una data incollata con le barre o con i
+   trattini perde tutto quello che non è cifra. */
+function dataConBarre(cifre){
+  return cifre.slice(0, 2) + (cifre.length > 2 ? "/" + cifre.slice(2, 4) : "") +
+         (cifre.length > 4 ? "/" + cifre.slice(4, 8) : "");
+}
+/* la posizione, nel testo con le barre, subito dopo la n-esima cifra */
+function dopoLaCifra(testo, n){
+  if(n <= 0) return 0;
+  var i, viste = 0;
+  for(i = 0; i < testo.length; i++) if(/\d/.test(testo[i]) && ++viste === n) return i + 1;
+  return testo.length;
+}
+function formattaDataProt(t, ev){
+  var grezzo = t.value, cursore = t.selectionStart == null ? grezzo.length : t.selectionStart;
+  var cifre = grezzo.replace(/\D/g, "");
+  var prima = grezzo.slice(0, cursore).replace(/\D/g, "").length;
+  /* il tasto indietro su una barra la toglie senza toccare le cifre, e la
+     formattazione la rimetterebbe subito: va tolta anche la cifra davanti */
+  var vecchie = (t.dataset.cifre || "");
+  if(ev.inputType === "deleteContentBackward" && cifre === vecchie && prima > 0){
+    cifre = cifre.slice(0, prima - 1) + cifre.slice(prima);
+    prima--;
+  }
+  cifre = cifre.slice(0, 8);
+  if(prima > cifre.length) prima = cifre.length;
+  var nuovo = dataConBarre(cifre);
+  t.dataset.cifre = cifre;
+  if(nuovo !== grezzo) t.value = nuovo;
+  try{ var pos = dopoLaCifra(nuovo, prima); t.setSelectionRange(pos, pos); }catch(e){}
+  return nuovo;
+}
+
 document.addEventListener("input", function(ev){
   var t=ev.target;
   if(!t || !t.id) return;
-  if(t.id==="in-prot") STATO_IMPORT.prot.numero=t.value;
-  else if(t.id==="in-prot-data") STATO_IMPORT.prot.data=t.value;
+  if(t.id==="in-prot"){
+    var solo = t.value.replace(/\D/g, "").slice(0, 7);
+    if(solo !== t.value) t.value = solo;
+    STATO_IMPORT.prot.numero=solo;
+  }
+  else if(t.id==="in-prot-data") STATO_IMPORT.prot.data=formattaDataProt(t, ev);
+});
+/* le cifre della data si ricordano anche quando il campo riceve il fuoco già
+   pieno, perché il tasto indietro sulla barra le confronta con quelle */
+document.addEventListener("focusin", function(ev){
+  var t=ev.target;
+  if(t && t.id==="in-prot-data") t.dataset.cifre = t.value.replace(/\D/g, "");
 });
 
 var cassetto=document.getElementById("cassetto"), velo=document.getElementById("velo");
