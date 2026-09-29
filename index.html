@@ -275,6 +275,27 @@ main{max-width:1180px;margin:0 auto;padding:22px 22px 90px}
 .titolo{font-weight:600;line-height:1.35;overflow-wrap:anywhere}
 .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;align-items:center}
 .dettagli{color:var(--muted);font-size:13.5px;margin-top:5px;overflow-wrap:anywhere;white-space:pre-wrap}
+/* l'ordine del giorno contratto: la riga riassuntiva apre e richiude i punti */
+.odg{margin-top:5px}
+.odg-testa{
+  display:flex;align-items:center;gap:8px;width:100%;min-height:32px;
+  padding:4px 6px 4px 2px;margin:0;border:0;border-radius:6px;background:none;
+  color:var(--ink);font:inherit;font-size:13.5px;font-weight:500;text-align:left;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.odg-testa:hover{background:var(--surface-2)}
+.odg-testa:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.odg-freccia{
+  flex:none;width:0;height:0;margin-left:4px;
+  border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid var(--accent);
+  transition:transform .15s ease;
+}
+.odg-testa[aria-expanded="true"] .odg-freccia{transform:rotate(90deg)}
+.odg-punti{
+  margin:4px 0 0;padding-left:26px;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere;
+}
+.odg-punti li{margin:2px 0;padding-left:2px}
+.odg-punti[hidden]{display:none}
 .alunni{
   margin-top:6px;font-size:13px;color:var(--ink);
   background:var(--surface-2);border:1px solid var(--line-soft);border-radius:6px;padding:4px 8px;
@@ -638,6 +659,8 @@ dialog::backdrop{background:rgba(30,18,8,.5)}
   .azioni .btn{padding:6px 12px;min-height:34px}
   .titolo{font-size:15.5px}
   .dettagli{font-size:14px}
+  .odg-testa{min-height:44px;font-size:14px}
+  .odg-punti{font-size:14px;padding-left:24px}
 
   .gruppo{border-radius:8px;margin-bottom:14px}
   .gruppo-testa{padding:10px 13px}
@@ -2245,7 +2268,58 @@ function tagStato(v){
   var cl = chiusa(v) ? "" : " aperto";
   return '<span class="tag tag-stato'+cl+'">'+esc(v.stato||"")+'</span>';
 }
-function riga(v){
+/* L'ordine del giorno, nei dettagli di una voce, è una serie di righe
+   numerate di seguito a partire da «1.». Nei Prossimi giorni quei punti
+   stanno chiusi sotto una riga che dice quanti sono; il resto dei dettagli,
+   orario, luogo e altre indicazioni, resta sempre visibile. Quali voci hanno
+   i punti aperti vale soltanto finché la pagina resta aperta: non è un dato
+   della voce, e nell'archivio non finisce. */
+var ODG_APERTI = {};
+function dividiOdg(testo){
+  var righe=String(testo||"").split("\n"), i, j;
+  for(i=0; i<righe.length; i++){
+    if(!/^\s*1[.)]\s+\S/.test(righe[i])) continue;
+    var punti=[];
+    for(j=i; j<righe.length; j++){
+      var m=righe[j].match(/^\s*(\d+)[.)]\s+(.*)$/);
+      if(!m || Number(m[1])!==punti.length+1) break;
+      punti.push(m[2]);
+    }
+    if(punti.length<2) continue;
+    return {prima: righe.slice(0,i).join("\n").trim(), punti: punti, dopo: righe.slice(j).join("\n").trim()};
+  }
+  return null;
+}
+function dettagliConOdg(v){
+  var o=dividiOdg(v.dettagli);
+  if(!o) return '<div class="dettagli">'+esc(v.dettagli)+'</div>';
+  var aperto=!!ODG_APERTI[v.id], id="odg-"+String(v.id).replace(/[^A-Za-z0-9_-]/g,"_");
+  var h='';
+  if(o.prima) h+='<div class="dettagli">'+esc(o.prima)+'</div>';
+  h+='<div class="odg">'+
+     '<button type="button" class="odg-testa" data-odg aria-expanded="'+aperto+'" aria-controls="'+id+'">'+
+     '<span class="odg-freccia" aria-hidden="true"></span>'+
+     'Ordine del giorno ('+o.punti.length+(o.punti.length===1?' punto':' punti')+')</button>'+
+     '<ol class="odg-punti" id="'+id+'"'+(aperto?'':' hidden')+'>'+
+     o.punti.map(function(p){ return '<li>'+esc(p)+'</li>'; }).join("")+
+     '</ol></div>';
+  if(o.dopo) h+='<div class="dettagli">'+esc(o.dopo)+'</div>';
+  return h;
+}
+/* apre e richiude i punti di una voce senza ridisegnare la vista */
+function giraOdg(btn){
+  var cont=btn.closest("[data-id]");
+  if(!cont) return;
+  var id=cont.dataset.id, aperto=!ODG_APERTI[id];
+  if(aperto) ODG_APERTI[id]=true; else delete ODG_APERTI[id];
+  btn.setAttribute("aria-expanded", String(aperto));
+  var ol=document.getElementById(btn.getAttribute("aria-controls"));
+  if(ol) ol.hidden=!aperto;
+}
+function rigaProssimi(v){ return riga(v, {contraiOdg: true}); }
+
+function riga(v, opz){
+  opz=(opz && typeof opz==="object") ? opz : {};
   var t=TIPI[v.tipo]||TIPI.impegno;
   var h='<div class="riga t-'+esc(v.tipo)+(chiusa(v)?" chiusa":"")+'" data-id="'+esc(v.id)+'">';
   h+=boxData(v);
@@ -2263,7 +2337,7 @@ function riga(v){
   h+=tagStato(v);
   h+='</div>';
   if(v.alunni) h+='<div class="alunni"><b>Convocati</b>'+esc(v.alunni)+'</div>';
-  if(v.dettagli) h+='<div class="dettagli">'+esc(v.dettagli)+'</div>';
+  if(v.dettagli) h+= opz.contraiOdg ? dettagliConOdg(v) : '<div class="dettagli">'+esc(v.dettagli)+'</div>';
   h+='</div><div class="azioni">';
   if(verbaleAmmesso(v)) h+='<button class="btn btn-sm btn-verbale" data-azione="verbale" type="button" title="Scarica il verbale già intestato con data, ora e ordine del giorno">Verbale precompilato</button>';
   if(!chiusa(v) && v.tipo!=="calendario") h+='<button class="btn btn-sm" data-azione="avanza" type="button">'+esc(prossimoStatoLabel(v))+'</button>';
@@ -2295,7 +2369,7 @@ function gruppo(titolo, quando, voci, classe){
   var h='<section class="gruppo '+(classe||"")+'"><div class="gruppo-testa"><h2>'+esc(titolo)+'</h2>';
   if(quando) h+='<span class="quando">'+esc(quando)+'</span>';
   h+='<span class="conta">'+voci.length+(voci.length===1?" voce":" voci")+'</span></div>';
-  h+=voci.map(riga).join("");
+  h+=voci.map(rigaProssimi).join("");
   return h+'</section>';
 }
 
@@ -6240,6 +6314,8 @@ function caricaEsempi(){
 /* ===== eventi.js ================================================== */
 /* ============ eventi globali ============ */
 document.addEventListener("click", function(ev){
+  var odg=ev.target.closest("[data-odg]");
+  if(odg){ giraOdg(odg); return; }
   var cmd=ev.target.closest("[data-cmd]");
   if(cmd){
     var c=cmd.dataset.cmd;
