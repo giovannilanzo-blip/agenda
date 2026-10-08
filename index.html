@@ -1481,7 +1481,7 @@ var stato = {
   cancellate:{},           /* id -> momento della cancellazione, per la fusione */
   aggiornatoArchivio:0,
   erroreArchivio:null,
-  sync:{fase:"senza chiave", sporco:false, ultimo:0, sha:"", messaggio:"", inCorso:null},
+  sync:{fase:"senza chiave", sporco:false, modifiche:0, ultimo:0, sha:"", messaggio:"", inCorso:null},
   vista:"prossimi",
   filtroHome:"tutto",
   sezImp:"classi",
@@ -1837,7 +1837,10 @@ function eliminaVoce(id){
   disegna();
 }
 
+/* la configurazione segna il momento dell'ultima modifica, come le voci:
+   è quello che la fusione confronta */
 function salvaConfig(){
+  stato.config.aggiornato = Date.now();
   scriviLocale();
   disegna();
 }
@@ -1879,11 +1882,23 @@ function fondiArchivi(a, b){
   });
 
   esito.cancellate = cancellate;
-  /* la configurazione non porta un momento per campo: vale quella
-     dell'archivio scritto per ultimo */
-  esito.config = ((b.aggiornato || 0) >= (a.aggiornato || 0)) ? (b.config || a.config || {}) : (a.config || {});
+  esito.config = configPiuRecente(a, b);
   esito.aggiornato = Math.max(a.aggiornato || 0, b.aggiornato || 0);
   return esito;
+}
+
+/* Anche la configurazione vince per il momento della sua ultima modifica, e
+   non per quello dell'archivio che la porta: l'archivio remoto si riscrive a
+   ogni sincronizzazione di qualunque dispositivo, e una configurazione vecchia
+   ne uscirebbe sempre più recente di una appena cambiata qui. Una
+   configurazione senza momento viene da prima di questa regola, e cede a
+   qualunque configurazione datata; fra due senza momento vale, come allora,
+   l'archivio scritto per ultimo. A parità vince b, la copia locale. */
+function configPiuRecente(a, b){
+  var ca = a.config || {}, cb = b.config || {};
+  var ma = ca.aggiornato || 0, mb = cb.aggiornato || 0;
+  if(ma || mb) return (mb >= ma) ? cb : ca;
+  return ((b.aggiornato || 0) >= (a.aggiornato || 0)) ? (b.config || a.config || {}) : ca;
 }
 
 /* ---------- i documenti caricati ---------- */
@@ -2198,10 +2213,14 @@ function sincronizzaOra(){
 
   stato.sync.messaggio = "";
   var giro = 0;
+  /* le modifiche fatte mentre il giro è in corso non sono nel file che parte:
+     restano da sincronizzare, e un altro giro le porta */
+  var visto = stato.sync.modifiche || 0;
 
   function prova(){
     giro++;
     return leggiRemoto().then(function(r){
+      visto = stato.sync.modifiche || 0;
       var fuso = fondiArchivi(r.archivio, archivioCorrente());
       fuso.aggiornato = Date.now();
       applicaArchivio(fuso);
@@ -2214,6 +2233,7 @@ function sincronizzaOra(){
         }
         stato.sync.sha = w.sha || "";
         stato.sync.ultimo = Date.now();
+        if((stato.sync.modifiche || 0) !== visto) return true;
         stato.sync.sporco = false;
         stato.sync.fase = "sincronizzata";
         return true;
@@ -2227,6 +2247,7 @@ function sincronizzaOra(){
     return false;
   }).then(function(esito){
     stato.sync.inCorso = null;
+    if(esito && stato.sync.sporco) segnaDaSincronizzare(true);
     disegna();
     return esito;
   });
@@ -2234,9 +2255,12 @@ function sincronizzaOra(){
 }
 
 var attesaSincronia = null;
-function segnaDaSincronizzare(){
+/* ripresa: il giro appena finito ha lasciato indietro qualcosa, e non è una
+   modifica nuova da contare */
+function segnaDaSincronizzare(ripresa){
   if(!stato.sync) return;
   stato.sync.sporco = true;
+  if(!ripresa) stato.sync.modifiche = (stato.sync.modifiche || 0) + 1;
   if(!impostazioniGitHub()){ stato.sync.fase = "senza chiave"; return; }
   stato.sync.fase = "da sincronizzare";
   /* due secondi di attesa: una serie di modifiche ravvicinate produce una
@@ -6264,6 +6288,8 @@ function ripristinaBackup(testo){
   stato.voci = voci;
   stato.cancellate = dati.cancellate || {};
   if(dati.config && typeof dati.config === "object") stato.config = Object.assign(stato.config, dati.config);
+  /* un ripristino è una modifica fatta adesso: deve vincere sul remoto */
+  stato.config.aggiornato = Date.now();
   scriviLocale();
   disegna();
   return n;
