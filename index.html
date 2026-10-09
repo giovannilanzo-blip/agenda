@@ -1895,8 +1895,12 @@ function scriviLocale(){
   segnaDaSincronizzare();
 }
 
+/* salvaVoce è la strada delle modifiche fatte dal docente: la finestra della
+   voce, il pulsante dello stato, lo spostamento d'ora. Il momento si annota
+   anche in «mano», che la lettura dei documenti e la fusione rispettano. */
 function salvaVoce(v){
   v.aggiornato = Date.now();
+  v.mano = v.aggiornato;
   if(!v.creato) v.creato = v.aggiornato;
   stato.voci[v.id] = v;
   if(stato.cancellate) delete stato.cancellate[v.id];
@@ -1950,8 +1954,16 @@ function fondiArchivi(a, b){
     var va = (a.voci || {})[k], vb = (b.voci || {})[k];
     var v = (!va) ? vb : (!vb) ? va : ((vb.aggiornato || 0) > (va.aggiornato || 0) ? vb : va);
     if(!v) return;
+    /* lo stato scelto dal docente vince su una versione più recente che
+       non l'ha toccato a mano, per esempio la stessa seduta riletta da un
+       documento su un altro dispositivo */
+    var altra = (v === va) ? vb : va;
+    if(altra && (altra.mano || 0) > (v.mano || 0)) v = Object.assign({}, v, {stato: altra.stato, mano: altra.mano});
     var quando = cancellate[k];
     if(quando && quando >= (v.aggiornato || 0)) return;   /* cancellata dopo: resta cancellata */
+    /* una voce riscritta da un documento non fa rinascere quella eliminata a
+       mano: torna viva soltanto se il docente l'ha toccata dopo */
+    if(quando && v.letta && quando >= (v.mano || 0)) return;
     if(quando) delete cancellate[k];                       /* rimessa a mano dopo: torna viva */
     esito.voci[k] = v;
   });
@@ -7083,7 +7095,8 @@ function leggiTestoARegole(testo, nome){
        scadenza, parte spuntata soltanto se le regole l'hanno riconosciuta
        come cosa del docente */
     STATO_IMPORT.spuntate[i] = !!lettura.documento.riguardaIlDocente &&
-                               (v.categoria !== "comunicazione" || !!v.spunta);
+                               (v.categoria !== "comunicazione" || !!v.spunta) &&
+                               !eliminataDalDocente(idVoceDaLettura(v));
   });
   STATO_IMPORT.fase = lettura.voci.length ? "conferma" : "fatto";
 
@@ -7118,10 +7131,20 @@ function scriviVociConfermate(){
   var daTogliere = lettura.voci.map(function(v, i){
     return STATO_IMPORT.spuntate[i] ? vociDaSostituire(v) : [];
   });
+  var eliminate = 0;
   lettura.voci.forEach(function(v, i){
     if(!STATO_IMPORT.spuntate[i]) return;
     var voce = JSON.parse(JSON.stringify(v));
     voce.id = idVoceDaLettura(v);
+    /* una voce eliminata dal docente non si ricrea rileggendo il documento */
+    if(eliminataDalDocente(voce.id)){ eliminate++; return; }
+    /* la versione del documento aggiorna titolo, dettagli e convocazione;
+       lo stato e quello che il docente ha fatto a mano restano */
+    var mia = null;
+    daTogliere[i].concat([voce.id]).forEach(function(id){
+      var e = stato.voci[id];
+      if(e && (!mia || (e.mano || 0) > (mia.mano || 0))) mia = e;
+    });
     /* un'integrazione gia' applicata alla seduta non si perde rileggendo la
        convocazione */
     daTogliere[i].concat([voce.id]).forEach(function(id){
@@ -7144,8 +7167,13 @@ function scriviVociConfermate(){
     delete voce.spunta;
     delete voce.oraFine;
     delete voce.fineIntervallo;
-    voce.creato = adesso;
+    voce.creato = mia && mia.creato ? mia.creato : adesso;
     voce.aggiornato = adesso;
+    voce.letta = adesso;
+    if(mia){
+      if(mia.stato) voce.stato = mia.stato;
+      if(mia.mano) voce.mano = mia.mano;
+    }
     stato.voci[voce.id] = voce;
     if(stato.cancellate) delete stato.cancellate[voce.id];
     scritte.push(voce);
@@ -7159,8 +7187,9 @@ function scriviVociConfermate(){
       ", nelle " + conConv.length + (conConv.length === 1 ? " voce" : " voci") + " della convocazione";
   }
   STATO_IMPORT.fase = "fatto";
-  notaFlash(scritte.length ? (scritte.length + (scritte.length === 1 ? " voce scritta in agenda." : " voci scritte in agenda."))
-                           : "Nessuna voce scritta.");
+  notaFlash((scritte.length ? (scritte.length + (scritte.length === 1 ? " voce scritta in agenda." : " voci scritte in agenda."))
+                            : "Nessuna voce scritta.") +
+            (eliminate ? " " + eliminate + (eliminate === 1 ? " voce eliminata da te non è stata ricreata." : " voci eliminate da te non sono state ricreate.") : ""));
   disegna();
 }
 
@@ -7168,6 +7197,9 @@ function scriviVociConfermate(){
    classi. Così la stessa seduta comunicata da due documenti diversi, o dallo
    stesso documento caricato due volte, resta una voce sola, e l'ultima
    lettura la aggiorna. */
+function eliminataDalDocente(id){
+  return !stato.voci[id] && !!(stato.cancellate && stato.cancellate[id]);
+}
 function classiInChiave(classe){
   return String(classe || "").split(/\s*[,;]\s*|\s+e\s+/)
     .map(function(c){ return c.trim().toUpperCase(); })
@@ -7320,7 +7352,8 @@ function schedaConferma(L){
     h += '<p class="aiuto cv-meta">' + (comunicazione ? '<b>dalla comunicazione</b> · ' : '') +
          esc((TIPI[v.tipo] || {}).breve || v.tipo) +
          ' · ' + esc(v.stato) + (v.fonte ? ' · ' + esc(v.fonte) : "") +
-         ((STATO_IMPORT.gia || {})[i] ? ' · <b>sostituisce quella esistente:</b> ' + esc(STATO_IMPORT.gia[i]) : "") + '</p>';
+         ((STATO_IMPORT.gia || {})[i] ? ' · <b>sostituisce quella esistente:</b> ' + esc(STATO_IMPORT.gia[i]) + ' (lo stato resta quello che hai scelto)' : "") +
+         (eliminataDalDocente(idVoceDaLettura(v)) ? ' · <b>l\'hai eliminata: non viene ricreata</b>' : "") + '</p>';
     h += '</li>';
   });
   h += '</ul>';
