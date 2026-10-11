@@ -4524,10 +4524,21 @@ function anniScolastici(anno){
   var p = oggi.getMonth() >= 8 ? oggi.getFullYear() : oggi.getFullYear() - 1;
   return {primo: p, secondo: p + 1};
 }
-/* Una data scritta senza anno è la prima occorrenza dalla data del
-   protocollo in poi: «2 settembre» in una circolare di agosto 2027 è il 2
-   settembre 2027. Senza protocollo vale l'anno scolastico: settembre-dicembre
-   il primo anno, gennaio-agosto il secondo. */
+/* Una data scritta senza anno è la prima occorrenza da un giorno di
+   riferimento in poi. Il riferimento è la data del protocollo: «2 settembre»
+   in una circolare di agosto 2027 è il 2 settembre 2027. Senza protocollo è
+   il giorno della lettura, con due mesi di tolleranza all'indietro, perché un
+   documento si può leggere qualche giorno dopo le date che nomina: letta il
+   10 ottobre, una convocazione per il 5 ottobre resta del 5 ottobre di
+   quell'anno (leggiARegole, riferimentoSenzaProtocollo). L'anno scolastico
+   delle Impostazioni vale soltanto quando manca anche il riferimento. */
+var TOLLERANZA_LETTURA = 60;
+function riferimentoSenzaProtocollo(oggi){
+  var m = String(oggi || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return "";
+  var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) - TOLLERANZA_LETTURA);
+  return isoData(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
 function annoPerMese(mese, anni, giorno){
   var m = String(anni.dopo || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(m){
@@ -5289,11 +5300,13 @@ function leggiARegole(testo, opzioni){
   var modalita = trovaModalita(righe);
   var odg = trovaOdg(righe);
 
-  /* la data del protocollo, per distinguere quello che deve ancora venire */
+  /* la data del protocollo, per distinguere quello che deve ancora venire;
+     senza protocollo, il giorno della lettura */
   var protIso = "";
   var mProt = String(prot.data || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if(mProt) protIso = mProt[3] + "-" + mProt[2] + "-" + mProt[1];
-  anni.dopo = protIso;
+  var oggiLettura = opzioni.oggi !== undefined ? opzioni.oggi : (typeof oggiISO === "function" ? oggiISO() : "");
+  anni.dopo = protIso || riferimentoSenzaProtocollo(oggiLettura);
 
   /* ---------- primo tempo: righe, date, orari ---------- */
   var contesto = {mese: 0, anno: 0};
@@ -5916,7 +5929,13 @@ function intestazioneUtile(s){
        composizioni: {"3BSA": {docenti:[{cognome,nome,disciplina}],
                                rappresentanti:[{componente,nome}]}}
      }
-   Un anno nuovo parte vuoto: niente si riporta da un anno all'altro.
+   Nomina, delega e coordinatori valgono per un anno solo: un anno nuovo
+   parte senza, e la pulizia del 1° settembre li toglie da quello finito
+   (cambio-anno.js). Composizione e rappresentanti invece restano e seguono
+   la classe: i docenti passano alla classe dell'anno dopo (la seconda di
+   quest'anno è la terza dell'anno prossimo) finché non li si corregge, e
+   i rappresentanti restano in carica fino alle elezioni della loro
+   componente (composizioneValida, più sotto).
    Nessuna classe e nessun nome sono scritti qui: tutto viene dai
    documenti o da quello che il docente scrive a mano.
    ============================================================ */
@@ -6270,6 +6289,9 @@ function seduteIntegrate(integr, dataProt){
   return elencoVoci().filter(function(v){
     var c = v.convocazione;
     if(!c || tipoVerbale(v) !== "cdc") return false;
+    /* un'integrazione che nomina le classi riguarda soltanto le loro sedute */
+    if(integr.classi && integr.classi.length &&
+       !classiDi(v).some(function(x){ return integr.classi.indexOf(chiaveClasse(x)) >= 0; })) return false;
     if(integr.circolari.length || integr.protocolli.length){
       return integr.circolari.indexOf(String(c.circolare || "")) >= 0 ||
              integr.protocolli.indexOf(protocolloNormale(c.protocollo)) >= 0;
@@ -7442,7 +7464,14 @@ async function applicaProtocollo(){
   if(!dataValida(an, me, g)){ notaFlash("La data del protocollo va scritta come gg/mm/aaaa: questa data non esiste."); return; }
   var gg = cifre.slice(0, 2), mm = cifre.slice(2, 4), aa = cifre.slice(6, 8);
   if(num.length < 7) num = ("0000000" + num).slice(-7);
+  var dataPrima = STATO_IMPORT.lettura ? STATO_IMPORT.lettura.documento.protData : "";
   STATO_IMPORT.prot = {numero: num, data: gg + "/" + mm + "/20" + aa};
+  /* le date scritte senza anno si contano dal protocollo: se le voci sono
+     ancora da confermare, la lettura si rifà con il protocollo nuovo, e le
+     spunte del docente restano */
+  if(STATO_IMPORT.fase === "conferma" && STATO_IMPORT.testo && dataPrima !== STATO_IMPORT.prot.data &&
+     (STATO_IMPORT.tipoDoc === "convocazione" || STATO_IMPORT.tipoDoc === "altro")) rileggiConProtocollo();
+  else if(STATO_IMPORT.tipoDoc === "altro" && protocolloPerLeDate()) STATO_IMPORT.dateDaProtocollo = true;
 
   var esito = scriviProtocolloDove({protocollo: num, giorno: gg, mese: mm, anno: aa});
   if(!esito) return;
@@ -7452,6 +7481,21 @@ async function applicaProtocollo(){
   try{ imparate = imparaFormeTimbro(num, gg + "/" + mm + "/" + aa); }catch(e){ imparate = 0; }
   notaFlash(esito + (imparate ? " Imparata " + imparate + (imparate === 1 ? " forma nuova del timbro." : " forme nuove del timbro.") : ""));
   disegna();
+}
+
+/* rifà la lettura del testo già estratto, con il protocollo del pannello */
+function rileggiConProtocollo(){
+  var L = STATO_IMPORT.lettura, spunte = {};
+  if(L) L.voci.forEach(function(v, i){ spunte[v.titolo + "|" + v.classe + "|" + v.categoria] = STATO_IMPORT.spuntate[i]; });
+  var prot = STATO_IMPORT.prot;
+  leggiTestoARegole(STATO_IMPORT.testo, STATO_IMPORT.nomeFile);
+  STATO_IMPORT.prot = prot;
+  STATO_IMPORT.dateDaProtocollo = true;
+  var N = STATO_IMPORT.lettura;
+  if(N) N.voci.forEach(function(v, i){
+    var k = v.titolo + "|" + v.classe + "|" + v.categoria;
+    if(spunte[k] !== undefined && !eliminataDalDocente(idVoceDaLettura(v))) STATO_IMPORT.spuntate[i] = spunte[k];
+  });
 }
 
 /* Il protocollo va dove il documento lo usa, e la risposta dice dove. */
@@ -7510,6 +7554,10 @@ function scriviProtocolloDove(p){
     STATO_IMPORT.protApplicato = "";
     return "Protocollo pronto: va nella configurazione quando premi «Conserva».";
   }
+  if(STATO_IMPORT.dateDaProtocollo){
+    STATO_IMPORT.protApplicato = "";
+    return "Date ricalcolate dal protocollo del " + p.giorno + "/" + p.mese + "/20" + p.anno + ".";
+  }
   notaFlash("Questo documento non usa il protocollo: non c'è nessun posto in cui scriverlo.");
   return "";
 }
@@ -7523,6 +7571,14 @@ function destinoDi(tipo, anno){
 /* il documento usa il protocollo? Soltanto se c'e' un posto in cui scriverlo */
 function usaIlProtocollo(){
   return ["convocazione", "integrazione", "nomina", "delega"].indexOf(STATO_IMPORT.tipoDoc) >= 0;
+}
+/* Un documento qualunque senza protocollo, con voci ancora da confermare:
+   il protocollo non va scritto da nessuna parte, ma le date senza anno si
+   contano da quello. Il pannello lo chiede per ricalcolarle. */
+function protocolloPerLeDate(){
+  var L = STATO_IMPORT.lettura;
+  return STATO_IMPORT.tipoDoc === "altro" && STATO_IMPORT.fase === "conferma" && !STATO_IMPORT.ritaglio &&
+         !!L && L.voci.length > 0 && (!L.documento.protData || !!STATO_IMPORT.dateDaProtocollo);
 }
 
 /* il protocollo del pannello, nella forma della configurazione */
@@ -7551,6 +7607,20 @@ function riconosciDocumento(testo, lettura){
     var I = leggiIntegrazione(testo, lettura);
     I.spunte = {};
     I.applicate = [];
+    /* le classi nominate: quelle delle sedute che il testo descrive e quelle
+       del docente scritte nel testo. Senza classi, l'integrazione vale per
+       tutte le sedute della convocazione. */
+    I.classi = [];
+    lettura.voci.forEach(function(v){
+      if(v.categoria === "consiglio-classe") classiDi(v).forEach(function(c){
+        if(I.classi.indexOf(chiaveClasse(c)) < 0) I.classi.push(chiaveClasse(c));
+      });
+    });
+    var nelTesto = " " + String(testo || "").toUpperCase().replace(/[^0-9A-Z]+/g, " ") + " ";
+    (stato.config.classi || []).forEach(function(c){
+      var k = chiaveClasse(c);
+      if(k && nelTesto.indexOf(" " + k + " ") >= 0 && I.classi.indexOf(k) < 0) I.classi.push(k);
+    });
     STATO_IMPORT.integrazione = I;
     /* le sedute ci sono gia': l'integrazione non ne crea di nuove */
     lettura.voci = lettura.voci.filter(function(v){ return v.categoria !== "consiglio-classe"; });
@@ -7667,21 +7737,26 @@ function leggiTestoARegole(testo, nome){
   }
 
   riconosciDocumento(testo, lettura);
+  STATO_IMPORT.riferimento = leggiRiferimento(testo, lettura);
+  togliDateVecchie(lettura, STATO_IMPORT.riferimento);
   STATO_IMPORT.lettura = lettura;
   STATO_IMPORT.spuntate = {};
   STATO_IMPORT.gia = {};
+  STATO_IMPORT.piani = {};
   lettura.voci.forEach(function(v, i){
     /* una voce che in agenda c'è già parte spuntata anch'essa: spuntarla vuol
        dire aggiornarla con la versione del documento. Un documento che non
        riguarda i docenti arriva invece con le caselle vuote: la decisione
        resta al docente, ma il consiglio è di lasciar perdere. */
-    STATO_IMPORT.gia[i] = vociDaSostituire(v).map(function(id){ return stato.voci[id].titolo; }).join("; ");
+    var piano = pianoVoce(v, STATO_IMPORT.riferimento);
+    STATO_IMPORT.piani[i] = piano;
+    STATO_IMPORT.gia[i] = piano.voci.map(function(x){ return x.titolo; }).join("; ");
     /* una comunicazione, cioè una data nominata senza organo, orario o
        scadenza, parte spuntata soltanto se le regole l'hanno riconosciuta
        come cosa del docente */
     STATO_IMPORT.spuntate[i] = !!lettura.documento.riguardaIlDocente &&
                                (v.categoria !== "comunicazione" || !!v.spunta) &&
-                               !eliminataDalDocente(idVoceDaLettura(v));
+                               !eliminataDalDocente(idVoceDaLettura(v)) && !v.origineEliminata;
   });
   STATO_IMPORT.fase = lettura.voci.length ? "conferma" : "fatto";
 
@@ -7709,49 +7784,60 @@ function segnaEsitoDocumento(id, lettura){
 function scriviVociConfermate(){
   var lettura = STATO_IMPORT.lettura;
   if(!lettura) return;
-  var scritte = [], adesso = Date.now();
-  /* le voci da sostituire si cercano tutte prima di scrivere, sull'agenda
-     com'era: una voce appena scritta da questo documento non va scambiata
-     per una seduta da rimpiazzare */
-  var daTogliere = lettura.voci.map(function(v, i){
-    return STATO_IMPORT.spuntate[i] ? vociDaSostituire(v) : [];
+  var rif = STATO_IMPORT.riferimento || null;
+  var scritte = [], scritteId = {}, adesso = Date.now();
+  /* le voci toccate si cercano tutte prima di scrivere, sull'agenda com'era:
+     una voce appena scritta da questo documento non va scambiata per una
+     seduta da rimpiazzare */
+  var piani = lettura.voci.map(function(v, i){
+    return STATO_IMPORT.spuntate[i] ? pianoVoce(v, rif) : {azione: "nuova", voci: []};
   });
+  /* da ogni voce vecchia si tolgono le classi che le voci nuove si prendono;
+     quando non gliene resta nessuna, se ne va */
+  var togliDa = {};
   var eliminate = 0;
   lettura.voci.forEach(function(v, i){
     if(!STATO_IMPORT.spuntate[i]) return;
     var voce = JSON.parse(JSON.stringify(v));
     voce.id = idVoceDaLettura(v);
-    /* una voce eliminata dal docente non si ricrea rileggendo il documento */
-    if(eliminataDalDocente(voce.id)){ eliminate++; return; }
+    /* una voce eliminata dal docente non si ricrea rileggendo il documento,
+       e nemmeno spostandola */
+    if(eliminataDalDocente(voce.id) || v.origineEliminata){ eliminate++; return; }
+    var P = piani[i], ids = P.voci.map(function(x){ return x.id; });
+    /* un documento che corregge o sposta quello precedente aggiorna la sua
+       voce: ordine del giorno, rappresentanti e protocollo della
+       convocazione restano quelli */
+    var base = null;
+    P.voci.forEach(function(x){ if(x.unisci && !base) base = stato.voci[x.id]; });
+    if(base) voce = unisciVoce(base, voce, rif, lettura.documento);
     /* la versione del documento aggiorna titolo, dettagli e convocazione;
        lo stato e quello che il docente ha fatto a mano restano */
     var mia = null;
-    daTogliere[i].concat([voce.id]).forEach(function(id){
+    ids.concat([voce.id]).forEach(function(id){
       var e = stato.voci[id];
       if(e && (!mia || (e.mano || 0) > (mia.mano || 0))) mia = e;
     });
     /* un'integrazione gia' applicata alla seduta non si perde rileggendo la
        convocazione */
-    daTogliere[i].concat([voce.id]).forEach(function(id){
+    ids.concat([voce.id]).forEach(function(id){
       var vecchia = stato.voci[id];
       if(voce.convocazione && vecchia && vecchia.convocazione && vecchia.convocazione.integrazione && !voce.convocazione.integrazione){
         voce.convocazione.integrazione = vecchia.convocazione.integrazione;
         voce.dettagli = dettagliConIntegrazione(voce.dettagli || "", voce.convocazione);
       }
     });
-    /* la versione del documento prende il posto di quella che c'era, anche
-       se l'aveva scritta il docente: la cancellazione si annota, perché la
-       sincronizzazione non la faccia rinascere da un'altra copia */
-    daTogliere[i].forEach(function(id){
-      if(id === voce.id) return;
-      delete stato.voci[id];
-      if(!stato.cancellate) stato.cancellate = {};
-      stato.cancellate[id] = adesso;
+    P.voci.forEach(function(x){
+      if(x.id === voce.id) return;
+      var r = togliDa[x.id] || (togliDa[x.id] = {classi: [], intera: false});
+      if(!x.togli) r.intera = true;
+      else x.togli.forEach(function(c){ if(r.classi.indexOf(c) < 0) r.classi.push(c); });
     });
     delete voce.categoria;
     delete voce.spunta;
     delete voce.oraFine;
     delete voce.fineIntervallo;
+    delete voce.origineEliminata;
+    delete voce.daData;
     voce.creato = mia && mia.creato ? mia.creato : adesso;
     voce.aggiornato = adesso;
     voce.letta = adesso;
@@ -7762,8 +7848,30 @@ function scriviVociConfermate(){
     stato.voci[voce.id] = voce;
     if(stato.cancellate) delete stato.cancellate[voce.id];
     scritte.push(voce);
+    scritteId[voce.id] = true;
   });
-  if(scritte.length) scriviLocale();
+  /* la versione del documento prende il posto di quella che c'era, anche se
+     l'aveva scritta il docente: la cancellazione si annota, perché la
+     sincronizzazione non la faccia rinascere da un'altra copia. Una voce che
+     riguardava anche altre classi resta per quelle. */
+  Object.keys(togliDa).forEach(function(id){
+    var e = stato.voci[id], r = togliDa[id];
+    if(!e || scritteId[id]) return;
+    var resta = r.intera ? [] : classiDi(e).filter(function(c){ return r.classi.indexOf(c.toUpperCase()) < 0; });
+    if(!resta.length){
+      delete stato.voci[id];
+      if(!stato.cancellate) stato.cancellate = {};
+      stato.cancellate[id] = adesso;
+      return;
+    }
+    var ridotta = Object.assign({}, e);
+    var prima = elencoLeggibile(classiDi(e)), dopo = elencoLeggibile(resta);
+    ridotta.classe = resta.join(", ");
+    if(prima && ridotta.titolo && ridotta.titolo.indexOf(prima) >= 0) ridotta.titolo = ridotta.titolo.replace(prima, dopo);
+    ridotta.aggiornato = adesso;
+    stato.voci[id] = ridotta;
+  });
+  if(scritte.length || Object.keys(togliDa).length) scriviLocale();
   STATO_IMPORT.scritte = scritte;
   var conConv = scritte.filter(function(v){ return !!v.convocazione; });
   if(conConv.length && conConv[0].convocazione.protocollo){
@@ -7794,26 +7902,165 @@ function idVoceDaLettura(v){
   var cl = classiInChiave(v.classe).join("-").toLowerCase().replace(/[^a-z0-9\-]+/g, "");
   return (v.categoria || "altro") + "-" + (v.data || "senza-data") + (cl ? "-" + cl : "");
 }
+/* la categoria di una voce in agenda: una voce nata da un documento la porta
+   nell'identificativo, quelle scritte a mano la lasciano leggere dal titolo */
+function categoriaInAgenda(k, e){
+  var dallId = /^([a-z]+(?:-[a-z]+)*)-\d{4}-\d{2}-\d{2}(?:-|$)/.exec(k);
+  return (dallId && CANONICO[dallId[1]] !== undefined) ? dallId[1] : categoriaDiVoce(e);
+}
 
-/* Le voci in agenda che riguardano la stessa seduta di una voce letta: stesso
-   identificativo, oppure stesso giorno, stesse classi e stessa categoria, con
-   la categoria letta dal titolo per le voci scritte a mano. Le voci del
-   lavoro in classe (compiti, interrogazioni, argomenti e le altre attività
-   con la classe) non si toccano mai; e una voce che dal titolo non si lascia
-   classificare non si scambia per nessuna seduta. */
-function vociDaSostituire(v){
-  var id = idVoceDaLettura(v), mie = classiInChiave(v.classe).join(","), esito = [];
+/* ---------- documenti che riguardano la stessa attività ---------- */
+/* Un documento che ne cita uno precedente per correggerlo: un'integrazione,
+   una rettifica, una modifica, un rinvio o un anticipo. Si riconosce da una
+   di queste parole e dalla circolare o dal protocollo che cita, diversi dai
+   suoi. Restituisce null per tutti gli altri documenti. */
+var SEGNI_RIFERIMENTO = /integrazion|integrat[oaie]\b|rettific|parziale modific|\ba modifica\b|modificat[oaie]\b|rinviat[oaie]\b|\brinvio\b|posticipat|anticipat[oaie]\b|spostat[oaie]\b|differit[oaie]\b/;
+var SEGNI_SPOSTAMENTO = /rinviat[oaie]\b|\brinvio\b|posticipat|anticipat[oaie]\b|spostat[oaie]\b|differit[oaie]\b/;
+function leggiRiferimento(testo, lettura){
+  var t = senzaAccenti(normalizzaTesto(testo || ""));
+  if(!SEGNI_RIFERIMENTO.test(t)) return null;
+  var doc = (lettura && lettura.documento) || {};
+  var propria = String(doc.circolare || ""), propriaProt = protocolloNormale(doc.protocollo || "");
+  var circolari = [], protocolli = [];
+  normalizzaTesto(testo).replace(/\bcirc(?:olare)?\.?\s*n\.?\s*0*(\d{1,4})\b/gi, function(x, n){
+    n = String(Number(n));
+    if(n !== propria && circolari.indexOf(n) < 0) circolari.push(n);
+    return x;
+  });
+  normalizzaTesto(testo).replace(/\bprot(?:ocollo)?\.?\s*(?:n\.?\s*)?0*(\d{3,7})\b/gi, function(x, n){
+    n = protocolloNormale(n);
+    if(n !== propriaProt && protocolli.indexOf(n) < 0) protocolli.push(n);
+    return x;
+  });
+  if(!circolari.length && !protocolli.length) return null;
+  return {circolari: circolari, protocolli: protocolli, sposta: SEGNI_SPOSTAMENTO.test(t),
+          integra: /integrazion|integrat[oaie]\b/.test(t)};
+}
+/* la voce in agenda è nata dal documento citato? */
+function nataDa(e, rif){
+  if(!rif || !e) return false;
+  var c = e.convocazione || {};
+  if(rif.circolari.some(function(n){
+    return new RegExp("\\bCirc\\.\\s*n\\.\\s*0*" + n + "\\b", "i").test(e.fonte || "") || String(c.circolare || "") === n;
+  })) return true;
+  var p = protocolloNormale(c.protocollo || "");
+  return !!p && rif.protocolli.indexOf(p) >= 0;
+}
+
+/* Che cosa fa in agenda una voce letta. Tocca:
+   - le voci della stessa categoria, nella stessa data, che riguardano almeno
+     una delle sue classi: a quelle toglie le sue classi, e quando non ne
+     restano le sostituisce;
+   - se il documento ne corregge uno precedente, anche le voci nate da quello
+     per le stesse classi in un'altra data: le sposta.
+   Le voci del lavoro in classe (compiti, interrogazioni, argomenti e le
+   altre attività con la classe) non si toccano mai; e una voce che dal
+   titolo non si lascia classificare non si scambia per nessuna seduta.
+   Restituisce {azione: "nuova" | "aggiorna" | "sposta", voci: [{id, titolo,
+   data, togli, resta, unisci}]}: togli sono le classi che passano alla voce
+   nuova (null: tutta la voce), resta quelle che la voce vecchia tiene per
+   sé, unisci dice che la voce nuova parte da quella vecchia. */
+function pianoVoce(v, rif){
+  var id = idVoceDaLettura(v), mie = classiInChiave(v.classe), out = {azione: "nuova", voci: []};
   Object.keys(stato.voci).forEach(function(k){
     var e = stato.voci[k];
     if(!e || TIPI_IN_CLASSE.indexOf(e.tipo) >= 0) return;
-    if(k === id){ esito.push(k); return; }
-    if(e.data !== v.data || classiInChiave(e.classe).join(",") !== mie) return;
-    /* una voce nata da un documento porta la categoria nell'identificativo */
-    var dallId = /^([a-z]+(?:-[a-z]+)*)-\d{4}-\d{2}-\d{2}(?:-|$)/.exec(k);
-    var cat = (dallId && CANONICO[dallId[1]] !== undefined) ? dallId[1] : categoriaDiVoce(e);
-    if(cat !== "altro" && cat === v.categoria) esito.push(k);
+    var sue = classiInChiave(e.classe), nata = nataDa(e, rif);
+    var comuni = sue.filter(function(c){ return mie.indexOf(c) >= 0; });
+    if(k !== id){
+      var cat = categoriaInAgenda(k, e);
+      if(cat === "altro" || cat !== v.categoria) return;
+      if(!(mie.length === 0 && sue.length === 0) && !comuni.length) return;
+      if(e.data !== v.data && !nata) return;
+    }
+    var tutte = k === id || (!mie.length && !sue.length);
+    out.voci.push({id: k, titolo: e.titolo || "", data: e.data || "",
+                   togli: tutte ? null : comuni,
+                   resta: tutte ? [] : sue.filter(function(c){ return mie.indexOf(c) < 0; }),
+                   unisci: nata});
   });
-  return esito;
+  if(out.voci.some(function(x){ return x.data !== v.data; })) out.azione = "sposta";
+  else if(out.voci.length) out.azione = "aggiorna";
+  return out;
+}
+
+/* Un rinvio nomina due date per la stessa seduta, quella vecchia e quella
+   nuova, e le regole ne ricavano due voci. Quella della data vecchia è la
+   seduta che c'è già in agenda, nata dal documento citato: non è una seduta
+   nuova, e si toglie dall'elenco. Se il docente l'aveva eliminata, la voce
+   spostata non si ricrea. */
+function togliDateVecchie(lettura, rif){
+  if(!rif || !rif.sposta || !lettura || !lettura.voci) return;
+  var via = {};
+  lettura.voci.forEach(function(v, i){
+    var mie = classiInChiave(v.classe).join(",");
+    var altre = lettura.voci.filter(function(w, j){
+      return j !== i && w.categoria === v.categoria && w.data !== v.data &&
+             classiInChiave(w.classe).join(",") === mie;
+    });
+    if(!altre.length) return;
+    var vecchia = Object.keys(stato.voci).some(function(k){
+      var e = stato.voci[k];
+      return e && e.data === v.data && nataDa(e, rif) && categoriaInAgenda(k, e) === v.categoria &&
+             classiInChiave(e.classe).some(function(c){ return mie.split(",").indexOf(c) >= 0; });
+    });
+    var eliminata = eliminataDalDocente(idVoceDaLettura(v));
+    if(!vecchia && !eliminata) return;
+    via[i] = true;
+    altre.forEach(function(w){
+      if(!w.daData) w.daData = v.data;
+      if(eliminata && !vecchia) w.origineEliminata = true;
+    });
+  });
+  lettura.voci = lettura.voci.filter(function(v, i){ return !via[i]; });
+}
+
+/* La voce spostata o corretta parte da quella vecchia: della nuova prende
+   data, classi, orario, modalità e quello che il documento dice; della
+   vecchia tiene ordine del giorno, rappresentanti e protocollo della
+   convocazione, che il documento nuovo non ripete. */
+function unisciVoce(vecchia, nuova, rif, doc){
+  var v = JSON.parse(JSON.stringify(vecchia));
+  var testa = /^(Ore |Seduta |Luogo|Sede)/;
+  v.id = nuova.id;
+  v.data = nuova.data;
+  if(nuova.periodo) v.periodo = nuova.periodo;
+  if(classiInChiave(v.classe).join(",") !== classiInChiave(nuova.classe).join(",")){
+    v.classe = nuova.classe;
+    v.titolo = nuova.titolo;
+  }
+  if(nuova.ora) v.ora = nuova.ora;
+  var fonti = String(v.fonte || "").split(/\s*,\s*/).filter(Boolean);
+  if(nuova.fonte && fonti.indexOf(nuova.fonte) < 0) fonti.push(nuova.fonte);
+  v.fonte = fonti.join(", ");
+  var rn = String(nuova.dettagli || "").split("\n"), rv = String(v.dettagli || "").split("\n");
+  var testaNuova = [], k = 0;
+  while(k < rn.length && testa.test(rn[k])) testaNuova.push(rn[k++]);
+  var corpoNuovo = rn.slice(k).join(" ").replace(/\s+/g, " ").trim();
+  var j = 0;
+  while(j < rv.length && testa.test(rv[j])) j++;
+  v.dettagli = (testaNuova.length ? testaNuova : rv.slice(0, j)).concat(rv.slice(j))
+    .concat(corpoNuovo ? [(nuova.fonte ? nuova.fonte + ": " : "") + corpoNuovo] : []).join("\n").trim();
+  var cn = nuova.convocazione;
+  if(cn && v.convocazione){
+    var c = v.convocazione;
+    ["giorno", "mese", "anno", "annoScolastico", "ora", "minuti"].forEach(function(x){ if(cn[x]) c[x] = cn[x]; });
+    if(doc && doc.modalita && cn.modalita) c.modalita = cn.modalita;
+    if((cn.odg || []).length) c.odg = rif && rif.integra ? (c.odg || []).concat(cn.odg) : cn.odg;
+  }else if(cn) v.convocazione = cn;
+  return v;
+}
+
+/* il piano di una voce, detto alla schermata di conferma */
+function dicituraPiano(piano, v){
+  if(!piano || !piano.voci.length) return ' · <b>nuova</b>';
+  var quale = piano.voci.map(function(x){
+    return esc(x.titolo) + (x.data !== v.data ? ' del ' + esc(dataLeggibile(x.data)) : '') +
+           (x.resta && x.resta.length ? ' (passa la ' + esc(elencoLeggibile(x.togli)) + '; resta la ' + esc(elencoLeggibile(x.resta)) + ')' : '');
+  }).join("; ");
+  if(piano.azione === "sposta") return ' · <b>sposta quella esistente:</b> ' + quale + ' al ' + esc(dataLeggibile(v.data)) +
+                                       ' (lo stato resta quello che hai scelto)';
+  return ' · <b>aggiorna quella esistente:</b> ' + quale + ' (lo stato resta quello che hai scelto)';
 }
 
 /* ---------- la vista Documenti ---------- */
@@ -7906,8 +8153,8 @@ function schedaConferma(L){
   var quanteGia = Object.keys(STATO_IMPORT.gia || {}).filter(function(k){ return STATO_IMPORT.gia[k]; }).length;
   if(quanteGia){
     h += '<p class="aiuto">' + quanteGia +
-         (quanteGia === 1 ? ' voce riguarda una seduta già in agenda e la sostituisce'
-                          : ' voci riguardano sedute già in agenda e le sostituiscono') +
+         (quanteGia === 1 ? ' voce riguarda una seduta già in agenda e la aggiorna'
+                          : ' voci riguardano sedute già in agenda e le aggiornano') +
          ' con la versione del documento: togli la spunta a quelle che vuoi lasciare come sono.</p>';
   }
   h += '<div class="riga-input"><button class="btn btn-piccolo" type="button" data-cmd="spunta-tutte">Spunta tutte</button>' +
@@ -7937,8 +8184,8 @@ function schedaConferma(L){
     h += '<p class="aiuto cv-meta">' + (comunicazione ? '<b>dalla comunicazione</b> · ' : '') +
          esc((TIPI[v.tipo] || {}).breve || v.tipo) +
          ' · ' + esc(v.stato) + (v.fonte ? ' · ' + esc(v.fonte) : "") +
-         ((STATO_IMPORT.gia || {})[i] ? ' · <b>sostituisce quella esistente:</b> ' + esc(STATO_IMPORT.gia[i]) + ' (lo stato resta quello che hai scelto)' : "") +
-         (eliminataDalDocente(idVoceDaLettura(v)) ? ' · <b>l\'hai eliminata: non viene ricreata</b>' : "") + '</p>';
+         ((eliminataDalDocente(idVoceDaLettura(v)) || v.origineEliminata) ? ' · <b>l\'hai eliminata: non viene ricreata</b>'
+           : dicituraPiano((STATO_IMPORT.piani || {})[i], v)) + '</p>';
     h += '</li>';
   });
   h += '</ul>';
@@ -7999,7 +8246,7 @@ function dataLeggibile(iso){
 /* Il docente lo ha chiesto espressamente: la lettura automatica si controlla
    guardando il timbro, e il numero si corregge a mano quando serve. */
 function pannelloTimbro(){
-  var usa = usaIlProtocollo();
+  var usa = usaIlProtocollo() || protocolloPerLeDate();
   var mio = STATO_IMPORT.prot || {numero: "", data: ""};
   var loc = protDaLocale();
   var h;
@@ -8071,7 +8318,8 @@ function pannelloTimbro(){
 function campiProtocollo(mio){
   var tipo = STATO_IMPORT.tipoDoc;
   var bottone = tipo === "convocazione" ? "Scrivi nelle voci"
-              : tipo === "integrazione" ? "Scrivi nell'integrazione" : "Scrivi nella configurazione";
+              : tipo === "integrazione" ? "Scrivi nell'integrazione"
+              : tipo === "altro" ? "Ricalcola le date" : "Scrivi nella configurazione";
   return '<div class="riga-timbro">' +
          '<label>Numero di protocollo<input type="text" id="in-prot" inputmode="numeric" ' +
          'placeholder="0008665" value="' + esc(mio.numero) + '"></label>' +
@@ -8087,8 +8335,11 @@ function destinoProtocollo(){
   if(tipo === "convocazione") dove = "nelle voci della convocazione, e di lì nell'intestazione del verbale";
   else if(tipo === "integrazione") dove = "nei campi dell'integrazione delle sedute integrate";
   else if(tipo === "nomina") dove = "nella configurazione, come protocollo della nomina a coordinatore";
+  else if(tipo === "altro") dove = "";
   else dove = "nella configurazione, come protocollo della delega a presiedere";
-  var h = '<p class="aiuto destino-prot">Questo protocollo va ' + esc(dove) + '.</p>';
+  var h = dove ? '<p class="aiuto destino-prot">Questo protocollo va ' + esc(dove) + '.</p>'
+               : '<p class="aiuto destino-prot">Il documento non ha protocollo: le date scritte senza anno si contano dal giorno ' +
+                 'della lettura. Se il protocollo c\'è, scrivilo qui e le date si ricalcolano da quello.</p>';
   if(STATO_IMPORT.protApplicato){
     h += '<p class="aiuto prot-scritto"><b>Scritto: ' + esc(STATO_IMPORT.protApplicato) + '.</b> ' +
          'Il verbale precompilato lo riporterà così.</p>';
