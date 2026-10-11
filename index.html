@@ -621,6 +621,24 @@ dialog::backdrop{background:rgba(30,18,8,.5)}
 .cassetto-piede{margin-top:auto;border-top:1px solid var(--line-soft);padding-top:6px}
 .cassetto-piede .voce-menu{font-weight:400;font-size:14.5px;color:var(--muted)}
 
+/* ---------- registro delle attività: elenco e, accanto, i comandi ---------- */
+/* I comandi stanno sempre in una colonna accanto all'elenco, anche sul
+   telefono: la colonna si stringe, non scende sotto. */
+.registro{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:18px;align-items:start}
+.registro-comandi{position:sticky;top:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.registro-comandi .btn{width:100%;justify-content:center;white-space:normal;text-align:center}
+.registro .vuoto{margin:0}
+/* qui «svolta» è la condizione normale di un'attività: non si barra */
+.registro .riga.chiusa{opacity:1}
+.registro .riga.chiusa .titolo{text-decoration:none}
+.registro .riga.annullata{opacity:.55}
+.registro .riga.annullata .titolo{text-decoration:line-through;text-decoration-color:var(--faint)}
+.att-compresenza{border:1px solid var(--line-soft);border-radius:8px;padding:8px 10px 10px;margin:0;min-width:0}
+.att-compresenza legend{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);padding:0 4px}
+#att-docenti{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+#att-docenti .spunta-riga{display:flex;gap:8px;align-items:baseline;overflow-wrap:anywhere}
+#att-docenti .spunta-riga .aiuto{font-size:11.5px}
+
 /* =======================================================
    ADATTAMENTO A SCHERMI STRETTI — telefono in verticale
    ======================================================= */
@@ -669,6 +687,11 @@ dialog::backdrop{background:rgba(30,18,8,.5)}
   .rail-lista li{padding:10px 13px}
 
   .classi{grid-template-columns:1fr;gap:14px}
+  .registro{grid-template-columns:minmax(0,1fr) 78px;gap:8px}
+  .registro-comandi{top:8px;gap:6px}
+  .registro-comandi .btn{font-size:12px;padding:7px 4px;min-height:44px;line-height:1.2}
+  .registro .riga{padding:10px 8px 10px 6px;gap:8px;grid-template-columns:38px minmax(0,1fr)}
+  .registro .gruppo-testa{flex-wrap:wrap;gap:4px 8px}
   .pannelli{grid-template-columns:1fr;gap:14px}
 
   /* filtri impilati, ricerca a tutta larghezza */
@@ -841,6 +864,7 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
 /* ---------- il cambio d'anno ---------- */
 #avviso-anno{margin-bottom:18px}
 .avviso-anno{border-left:4px solid var(--accent)}
+.avviso-anno .resoconti-anno{flex-wrap:wrap;margin-bottom:10px}
 .tab-coord tr.mia input{font-weight:600}
 .tag-coord{background:var(--surface);border:1px dashed var(--line);color:var(--muted)}
 </style>
@@ -873,6 +897,8 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
     <button class="tab" role="tab" data-vista="prossimi" aria-selected="true">Prossimi giorni <span class="n" id="n-prossimi">0</span></button>
     <button class="tab" role="tab" data-vista="classi" aria-selected="false">Per classe <span class="n" id="n-classi">0</span></button>
     <button class="tab" role="tab" data-vista="elenco" aria-selected="false">Elenco completo <span class="n" id="n-elenco">0</span></button>
+    <button class="tab" role="tab" data-vista="civica" aria-selected="false">Ed. civica</button>
+    <button class="tab" role="tab" data-vista="approf" aria-selected="false">Chimico-ambientale</button>
     <button class="tab" role="tab" data-vista="orario" aria-selected="false">Orario</button>
     <button class="tab" role="tab" data-vista="documenti" aria-selected="false">Documenti</button>
     <button class="tab" role="tab" data-vista="impostazioni" aria-selected="false">Impostazioni</button>
@@ -885,6 +911,8 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
   <section class="view" id="v-prossimi"></section>
   <section class="view" id="v-classi" hidden></section>
   <section class="view" id="v-elenco" hidden></section>
+  <section class="view" id="v-civica" hidden></section>
+  <section class="view" id="v-approf" hidden></section>
   <section class="view" id="v-orario" hidden></section>
   <section class="view" id="v-documenti" hidden></section>
   <section class="view" id="v-impostazioni" hidden></section>
@@ -901,6 +929,8 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
   <button class="voce-menu" type="button" data-vista-menu="prossimi">Prossimi giorni <span class="n" id="m-prossimi"></span></button>
   <button class="voce-menu" type="button" data-vista-menu="classi">Per classe</button>
   <button class="voce-menu" type="button" data-vista-menu="elenco">Elenco completo</button>
+  <button class="voce-menu" type="button" data-vista-menu="civica">Educazione civica</button>
+  <button class="voce-menu" type="button" data-vista-menu="approf">Sezione chimico-ambientale</button>
   <button class="voce-menu" type="button" data-vista-menu="orario">Orario</button>
   <button class="voce-menu" type="button" data-vista-menu="documenti">Documenti</button>
   <button class="voce-menu" type="button" data-vista-menu="impostazioni">Impostazioni</button>
@@ -925,8 +955,6 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
           <option value="compito">Compito in classe / verifica</option>
           <option value="argomento">Argomento da trattare</option>
           <option value="impegno">Riunione, scadenza, appuntamento</option>
-          <option value="civica">Ora di educazione civica</option>
-          <option value="approfondimento">Incontro chimico-ambientale</option>
           <option value="calendario">Data del calendario scolastico</option>
         </select>
       </div>
@@ -1030,6 +1058,56 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
     <div class="dlg-piede">
       <button class="btn btn-danger btn-sm" type="button" id="btn-elimina" hidden>Elimina</button>
       <button class="btn" type="button" id="btn-annulla">Annulla</button>
+      <button class="btn btn-primary" type="submit">Salva</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-att">
+  <form method="dialog" id="form-att" novalidate>
+    <div class="dlg-testa">
+      <h2 id="dlg-att-titolo">Nuova attività</h2>
+    </div>
+    <div class="dlg-corpo">
+      <div class="campo">
+        <label for="f-att-classe">Classe</label>
+        <select id="f-att-classe"></select>
+      </div>
+      <div class="campo">
+        <label for="f-att-data">Data</label>
+        <input id="f-att-data" type="date">
+      </div>
+      <div class="campo">
+        <label for="f-att-inizio">Inizio</label>
+        <input id="f-att-inizio" type="time" step="300">
+      </div>
+      <div class="campo">
+        <label for="f-att-fine">Fine</label>
+        <input id="f-att-fine" type="time" step="300">
+      </div>
+      <fieldset class="campo largo att-compresenza">
+        <legend>Docenti in compresenza</legend>
+        <div id="att-docenti"></div>
+        <label for="f-att-altri" class="aiuto">Altri docenti, scritti a mano e separati da virgola</label>
+        <input id="f-att-altri" type="text" placeholder="Es. Rossi Mario, Bianchi Anna">
+      </fieldset>
+      <div class="campo largo">
+        <label for="f-att-argomento">Argomento della lezione o dell'attività</label>
+        <input id="f-att-argomento" type="text" placeholder="Es. La raccolta differenziata nel quartiere">
+      </div>
+      <div class="campo largo">
+        <label for="f-att-note">Note</label>
+        <textarea id="f-att-note"></textarea>
+      </div>
+      <div class="campo">
+        <label for="f-att-stato">Stato</label>
+        <select id="f-att-stato"></select>
+      </div>
+      <p class="campo largo avviso" id="att-errore" role="alert" hidden></p>
+    </div>
+    <div class="dlg-piede">
+      <button class="btn btn-danger btn-sm" type="button" id="btn-att-elimina" hidden>Elimina</button>
+      <button class="btn" type="button" id="btn-att-annulla">Annulla</button>
       <button class="btn btn-primary" type="submit">Salva</button>
     </div>
   </form>
@@ -1507,10 +1585,10 @@ var TIPI = {
 };
 /* categorie con un monte ore da tenere sotto controllo */
 var MONTEORE=[
-  {chiave:"civica", tipo:"civica", titolo:"Educazione civica", classeBarra:"civ-svolte",
+  {chiave:"civica", tipo:"civica", titolo:"Educazione civica", sezione:"Educazione civica", classeBarra:"civ-svolte",
    tutteLeClassi:true, cosaManca:"quota di educazione civica da definire in consiglio",
    nota:"Riguarda ogni classe: la quota è deliberata dal consiglio di classe fra settembre e ottobre."},
-  {chiave:"approf", tipo:"approfondimento", titolo:"Chimico-ambientale", classeBarra:"app-svolte",
+  {chiave:"approf", tipo:"approfondimento", titolo:"Chimico-ambientale", sezione:"Sezione chimico-ambientale", classeBarra:"app-svolte",
    tutteLeClassi:false, cosaManca:"ore di indirizzo da definire",
    nota:"Riguarda solo le sezioni che le hanno: lascia a zero le classi che non le seguono. Ore tenute dai docenti universitari e programmate di volta in volta."}
 ];
@@ -2472,6 +2550,7 @@ function riga(v, opz){
   h+=tagClassi(v);
   h+='<span class="tag tag-tipo t-'+esc(v.tipo)+'">'+esc(t.breve)+'</span>';
   if(v.ora) h+='<span class="tag tag-ora">'+esc(v.ora)+'</span>';
+  else if(v.inizio && v.fine) h+='<span class="tag tag-ora">'+esc(v.inizio+"–"+v.fine)+'</span>';
   if(v.materia) h+='<span class="tag tag-mat">'+esc(v.materia)+'</span>';
   if((v.tipo==="civica"||v.tipo==="approfondimento") && v.durata) h+='<span class="tag tag-ore-civica">'+esc(oreTesto(v.durata))+'</span>';
   if(v.fonte){
@@ -3171,6 +3250,7 @@ function disegna(){
   else if(stato.vista==="elenco") disegnaElenco();
   else if(stato.vista==="orario") disegnaOrario();
   else if(stato.vista==="documenti") disegnaDocumenti();
+  else if(registroDiVista(stato.vista)) disegnaRegistro(registroDiVista(stato.vista));
   else disegnaImpostazioni();
 }
 function aggiornaDatalist(){
@@ -3206,6 +3286,8 @@ function statiPerTipo(tipo, scelto){
   document.getElementById("f-data").required = !!t.dataObbl;
 }
 function apriNuova(tipo, classe){
+  /* le attività di educazione civica e chimico-ambientali hanno la loro finestra */
+  if(registroDiTipo(tipo)){ apriAttivita(registroDiTipo(tipo), null, classe); return; }
   apriVoce(null);
   var selT=document.getElementById("f-tipo");
   selT.value=tipo;
@@ -3214,6 +3296,7 @@ function apriNuova(tipo, classe){
   document.getElementById("f-titolo").focus();
 }
 function apriVoce(v){
+  if(v && registroDiTipo(v.tipo)){ apriAttivita(registroDiTipo(v.tipo), v); return; }
   stato.modifica = v ? v.id : null;
   document.getElementById("dlg-titolo").textContent = v ? "Modifica voce" : "Nuova voce";
   document.getElementById("btn-elimina").hidden = !v;
@@ -6510,6 +6593,508 @@ function conservaElezioni(anno, date){
   salvaConfig();
 }
 
+/* ===== registro.js ================================================ */
+/* ============================================================
+   REGISTRO DELLE ATTIVITÀ: EDUCAZIONE CIVICA E CHIMICO-AMBIENTALE
+   Le due sezioni registrano, classe per classe, le attività svolte.
+   Non sono un archivio a parte: ogni attività è una voce come le
+   altre, del tipo «civica» o «approfondimento», e si salva, si
+   sincronizza e si fonde con le stesse regole (archivio.js). Lo
+   stato e le eliminazioni decisi dal docente restano tali.
+
+   Alla voce si aggiungono:
+     inizio, fine   l'orario, «10:00» e «11:00»
+     compresenza    i docenti presenti insieme al docente, un elenco
+                    di nomi «Cognome Nome»
+   L'argomento sta nel titolo, le note nei dettagli, e la durata si
+   ricava dall'orario: il monte ore la conta come prima.
+
+   I docenti in compresenza si scelgono dalla composizione del
+   consiglio di quella classe, quando è conservata (consigli.js,
+   composizioneValida), oppure si scrivono a mano.
+   ============================================================ */
+
+/* la categoria del monte ore che corrisponde a una vista o a un tipo */
+function registroDiVista(vista){
+  for(var i = 0; i < MONTEORE.length; i++) if(MONTEORE[i].chiave === vista) return MONTEORE[i];
+  return null;
+}
+function registroDiTipo(tipo){
+  for(var i = 0; i < MONTEORE.length; i++) if(MONTEORE[i].tipo === tipo) return MONTEORE[i];
+  return null;
+}
+
+/* «10:00» in minuti dalla mezzanotte; null se non è un orario */
+function minutiDi(hhmm){
+  var m = String(hhmm || "").match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return null;
+  var h = Number(m[1]), mi = Number(m[2]);
+  if(h > 23 || mi > 59) return null;
+  return h * 60 + mi;
+}
+/* le ore fra inizio e fine; 0 se l'orario manca o è rovesciato */
+function oreFra(inizio, fine){
+  var a = minutiDi(inizio), b = minutiDi(fine);
+  if(a === null || b === null || b <= a) return 0;
+  return (b - a) / 60;
+}
+/* le ore di un'attività: dall'orario, oppure, per le voci di prima, dalla durata */
+function oreAttivita(v){
+  return oreFra(v.inizio, v.fine) || Number(v.durata) || 0;
+}
+function orarioTesto(v){
+  return (v.inizio && v.fine) ? v.inizio + "–" + v.fine : "";
+}
+function compresenzaDi(v){
+  return Array.isArray(v.compresenza) ? v.compresenza.filter(Boolean) : [];
+}
+function annullata(v){
+  var st = String(v.stato || "").toLowerCase();
+  return st === "annullata" || st === "annullato";
+}
+
+/* le attività di una sezione, in ordine di data e di orario */
+function attivitaDi(m, anno){
+  return elencoVoci().filter(function(v){
+    if(v.tipo !== m.tipo) return false;
+    return !anno || annoScolasticoDi(v.data) === anno;
+  }).sort(function(a, b){
+    var da = a.data || "9999-99-99", db = b.data || "9999-99-99";
+    if(da !== db) return da < db ? -1 : 1;
+    return (a.inizio || "~") < (b.inizio || "~") ? -1 : 1;
+  });
+}
+
+/* ============ la vista di una sezione ============ */
+function rigaAttivita(v){
+  var h = '<div class="riga t-' + esc(v.tipo) + (chiusa(v) ? " chiusa" : "") + (annullata(v) ? " annullata" : "") + '" data-id="' + esc(v.id) + '">';
+  h += boxData(v);
+  h += '<div class="corpo"><div class="titolo">' + esc(v.titolo || "(senza argomento)") + '</div><div class="meta">';
+  h += tagClassi(v);
+  if(orarioTesto(v)) h += '<span class="tag tag-ora">' + esc(orarioTesto(v)) + '</span>';
+  var ore = oreAttivita(v);
+  if(ore) h += '<span class="tag tag-ore-civica">' + esc(oreTesto(ore)) + '</span>';
+  h += tagStato(v);
+  h += '</div>';
+  var cp = compresenzaDi(v);
+  if(cp.length) h += '<div class="alunni"><b>In compresenza</b>' + esc(cp.join(", ")) + '</div>';
+  if(v.dettagli) h += '<div class="dettagli">' + esc(v.dettagli) + '</div>';
+  h += '</div><div class="azioni">';
+  h += '<button class="btn btn-sm btn-ghost" data-azione="modifica" type="button">Modifica</button>';
+  h += '</div></div>';
+  return h;
+}
+
+function disegnaRegistro(m){
+  var el = document.getElementById("v-" + m.chiave);
+  var tutte = attivitaDi(m, "");
+  var h = testaVista(m.sezione,
+    "Le attività registrate classe per classe: data, orario, docenti in compresenza, argomento e note. " +
+    "A fine anno il resoconto va nella programmazione svolta di ciascuna classe.", "");
+  h += '<div class="registro"><div class="registro-elenco">';
+  if(!tutte.length){
+    h += '<div class="vuoto"><h2>Nessuna attività registrata</h2>' +
+         '<p>Registra la prima con il pulsante «Nuova attività», qui accanto.</p></div>';
+  }
+  var classi = [];
+  tutte.forEach(function(v){ classiDi(v).forEach(function(c){ if(classi.indexOf(c) < 0) classi.push(c); }); });
+  classi.sort().forEach(function(c){
+    var voci = tutte.filter(function(v){ return haClasse(v, c); });
+    var ore = voci.filter(function(v){ return !annullata(v); })
+                  .reduce(function(s, v){ return s + oreAttivita(v); }, 0);
+    h += '<section class="gruppo" data-registro-classe="' + esc(c) + '"><div class="gruppo-testa"><h2>' + esc(c) + '</h2>' +
+         '<span class="conta">' + voci.length + ' attività · ' + esc(oreTesto(ore)) + '</span></div>' +
+         voci.map(rigaAttivita).join("") + '</section>';
+  });
+  h += '</div><aside class="registro-comandi" aria-label="Comandi della sezione">' +
+       '<button class="btn btn-primary" type="button" data-cmd="att-nuova" data-registro="' + esc(m.chiave) + '">+ Nuova attività</button>' +
+       '<button class="btn" type="button" data-cmd="att-resoconto" data-registro="' + esc(m.chiave) + '" ' +
+       'title="Il resoconto dell&#39;a.s. ' + esc(annoScolastico()) + ' in Word, una tabella per classe">Stampa resoconto</button>' +
+       '</aside></div>';
+  el.innerHTML = h;
+}
+
+/* ============ la finestra dell'attività ============ */
+var dlgAtt = document.getElementById("dlg-att");
+
+/* i docenti del consiglio di quella classe, in quella data; [] se la
+   composizione non è conservata. Il docente stesso non compare. */
+function docentiDelConsiglio(classe, data){
+  if(!classe) return [];
+  var iso = data || oggiISO();
+  var comp = composizioneValida(annoScolasticoDi(iso) || annoScolastico(), classe, iso);
+  if(!comp) return [];
+  var visti = {};
+  return (comp.docenti || []).map(function(d){
+    return {nome: [d.cognome || "", d.nome || ""].join(" ").replace(/\s+/g, " ").trim(),
+            disciplina: d.disciplina || ""};
+  }).filter(function(d){
+    if(!d.nome || visti[d.nome.toLowerCase()]) return false;
+    visti[d.nome.toLowerCase()] = true;
+    return !personaCorrisponde(d.nome);
+  });
+}
+
+/* i nomi spuntati e quelli scritti a mano, senza doppioni */
+function compresenzaNellaFinestra(){
+  var nomi = [];
+  [].forEach.call(document.querySelectorAll("#att-docenti input[type=checkbox]"), function(c){
+    if(c.checked) nomi.push(c.value);
+  });
+  document.getElementById("f-att-altri").value.split(/[,;\n]+/).forEach(function(n){
+    n = n.replace(/\s+/g, " ").trim();
+    if(n) nomi.push(n);
+  });
+  var visti = {};
+  return nomi.filter(function(n){
+    var k = n.toLowerCase();
+    if(visti[k]) return false;
+    visti[k] = true;
+    return true;
+  });
+}
+
+/* le caselle dei docenti del consiglio; chi era spuntato resta spuntato, e
+   chi non è nel consiglio finisce fra i nomi scritti a mano */
+function disegnaDocentiAtt(scelti){
+  var classe = document.getElementById("f-att-classe").value;
+  var data = document.getElementById("f-att-data").value;
+  var elenco = docentiDelConsiglio(classe, data);
+  var box = document.getElementById("att-docenti");
+  var nelConsiglio = {};
+  elenco.forEach(function(d){ nelConsiglio[d.nome.toLowerCase()] = true; });
+  var chiave = function(n){ return n.toLowerCase(); };
+  var spuntati = {};
+  scelti.forEach(function(n){ spuntati[chiave(n)] = true; });
+  if(!classe){
+    box.innerHTML = '<p class="aiuto">Scegli prima la classe.</p>';
+  }else if(!elenco.length){
+    box.innerHTML = '<p class="aiuto">La composizione del consiglio della ' + esc(classe) +
+                    ' non è conservata: scrivi i nomi qui sotto, o conservala in Impostazioni › Consigli di classe.</p>';
+  }else{
+    box.innerHTML = elenco.map(function(d){
+      return '<label class="spunta-riga"><input type="checkbox" value="' + esc(d.nome) + '"' +
+             (spuntati[chiave(d.nome)] ? " checked" : "") + '> ' + esc(d.nome) +
+             (d.disciplina ? ' <span class="aiuto">' + esc(d.disciplina.toLowerCase()) + '</span>' : '') + '</label>';
+    }).join("");
+  }
+  document.getElementById("f-att-altri").value = scelti.filter(function(n){
+    return !nelConsiglio[chiave(n)];
+  }).join(", ");
+}
+
+function statoPredefinito(m, data){
+  var t = TIPI[m.tipo];
+  return (data && data <= oggiISO()) ? t.chiusi[0] : t.stati[0];
+}
+
+function apriAttivita(m, v, classe){
+  stato.modificaAtt = {registro: m.chiave, id: v ? v.id : null};
+  document.getElementById("dlg-att-titolo").textContent =
+    (v ? "Modifica attività · " : "Nuova attività · ") + m.sezione;
+  document.getElementById("btn-att-elimina").hidden = !v;
+  document.getElementById("att-errore").hidden = true;
+
+  var scelta = v ? (classiDi(v)[0] || "") : (classe || "");
+  var classi = stato.config.classi.slice();
+  if(scelta && classi.indexOf(scelta) < 0) classi.push(scelta);
+  document.getElementById("f-att-classe").innerHTML = '<option value="">—</option>' +
+    classi.sort().map(function(c){ return '<option' + (c === scelta ? " selected" : "") + '>' + esc(c) + '</option>'; }).join("");
+
+  document.getElementById("f-att-data").value = v ? (v.data || "") : oggiISO();
+  document.getElementById("f-att-inizio").value = v ? (v.inizio || "") : "";
+  document.getElementById("f-att-fine").value = v ? (v.fine || "") : "";
+  document.getElementById("f-att-argomento").value = v ? (v.titolo || "") : "";
+  document.getElementById("f-att-note").value = v ? (v.dettagli || "") : "";
+  var t = TIPI[m.tipo], st = v ? v.stato : statoPredefinito(m, document.getElementById("f-att-data").value);
+  var selS = document.getElementById("f-att-stato");
+  selS.innerHTML = t.stati.map(function(s){ return '<option' + (s === st ? " selected" : "") + '>' + esc(s) + '</option>'; }).join("");
+  selS.dataset.toccato = v ? "1" : "";
+  disegnaDocentiAtt(v ? compresenzaDi(v) : []);
+  dlgAtt.showModal();
+  document.getElementById(scelta ? "f-att-inizio" : "f-att-classe").focus();
+}
+
+function erroreAtt(t){
+  var e = document.getElementById("att-errore");
+  e.textContent = t;
+  e.hidden = false;
+}
+
+function salvaAttivita(){
+  var q = stato.modificaAtt, m = q && registroDiVista(q.registro);
+  if(!m) return false;
+  var classe = document.getElementById("f-att-classe").value;
+  var data = document.getElementById("f-att-data").value;
+  var inizio = document.getElementById("f-att-inizio").value;
+  var fine = document.getElementById("f-att-fine").value;
+  var argomento = document.getElementById("f-att-argomento").value.trim();
+  if(!classe){ erroreAtt("Scegli la classe."); return false; }
+  if(!data){ erroreAtt("Scrivi la data."); return false; }
+  if(minutiDi(inizio) === null || minutiDi(fine) === null){ erroreAtt("Scrivi l'orario di inizio e di fine, per esempio 10:00 e 11:00."); return false; }
+  if(!oreFra(inizio, fine)){ erroreAtt("L'orario di fine viene prima di quello di inizio."); return false; }
+  if(!argomento){ erroreAtt("Scrivi l'argomento della lezione o dell'attività."); return false; }
+
+  var vecchia = q.id && stato.voci[q.id];
+  var v = vecchia ? Object.assign({}, vecchia) : {id: nuovoId(), creato: Date.now()};
+  v.tipo = m.tipo;
+  v.classe = classe;
+  v.data = data;
+  v.inizio = inizio;
+  v.fine = fine;
+  v.durata = oreFra(inizio, fine);
+  v.compresenza = compresenzaNellaFinestra();
+  v.titolo = argomento;
+  v.dettagli = document.getElementById("f-att-note").value.trim();
+  v.stato = document.getElementById("f-att-stato").value;
+  v.materia = "";
+  stato.modificaAtt = null;
+  dlgAtt.close();
+  salvaVoce(v);
+  return true;
+}
+
+document.getElementById("form-att").addEventListener("submit", function(ev){
+  ev.preventDefault();
+  salvaAttivita();
+});
+document.getElementById("btn-att-annulla").addEventListener("click", function(){
+  stato.modificaAtt = null;
+  dlgAtt.close();
+});
+document.getElementById("btn-att-elimina").addEventListener("click", function(){
+  var q = stato.modificaAtt;
+  if(q && q.id){ stato.modificaAtt = null; dlgAtt.close(); eliminaVoce(q.id); }
+});
+["change", "input"].forEach(function(t){
+  document.getElementById("f-att-classe").addEventListener(t, function(){ disegnaDocentiAtt(compresenzaNellaFinestra()); });
+  document.getElementById("f-att-data").addEventListener(t, function(){
+    var q = stato.modificaAtt, m = q && registroDiVista(q.registro), selS = document.getElementById("f-att-stato");
+    if(m && !selS.dataset.toccato) selS.value = statoPredefinito(m, this.value);
+    if(t === "change") disegnaDocentiAtt(compresenzaNellaFinestra());
+  });
+});
+document.getElementById("f-att-stato").addEventListener("change", function(){ this.dataset.toccato = "1"; });
+
+/* ===== resoconto.js =============================================== */
+/* ============================================================
+   RESOCONTO IN WORD DELLE ATTIVITÀ
+   Il pulsante «Stampa resoconto» di ciascuna sezione del registro
+   (registro.js) produce un file .docx costruito qui, nella pagina:
+   nessun servizio esterno e nessuna libreria. Un .docx è un
+   archivio zip di pochi file XML; lo zip si scrive senza
+   compressione, che Word legge senza problemi.
+
+   Il file contiene, per l'anno scolastico scelto:
+   - in testa il titolo della sezione, l'anno e il nome del docente;
+   - ogni classe con almeno un'attività, in ordine alfabetico, con il
+     suo titolo e una tabella in ordine di data: Data, Orario,
+     Docenti in compresenza, Argomento, Note;
+   - in fondo a ogni tabella il totale delle ore, dagli orari.
+   Le attività annullate non sono svolte: non compaiono e non
+   contano.
+   ============================================================ */
+
+/* ---------- zip senza compressione ---------- */
+var TABELLA_CRC = null;
+function crc32(byte){
+  if(!TABELLA_CRC){
+    TABELLA_CRC = [];
+    for(var n = 0; n < 256; n++){
+      var c = n;
+      for(var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      TABELLA_CRC[n] = c >>> 0;
+    }
+  }
+  var crc = 0xFFFFFFFF;
+  for(var i = 0; i < byte.length; i++) crc = TABELLA_CRC[(crc ^ byte[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+/* file: [{nome, testo}] -> Uint8Array dello zip */
+function zipSenzaCompressione(file){
+  var enc = new TextEncoder(), parti = [], centrale = [], pos = 0;
+  var d = new Date();
+  var ora = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  var giorno = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  function testa(lungh){ return {b: new Uint8Array(lungh), v: null}; }
+  file.forEach(function(f){
+    var nome = enc.encode(f.nome), dati = enc.encode(f.testo), crc = crc32(dati);
+    var l = testa(30 + nome.length), v = new DataView(l.b.buffer);
+    v.setUint32(0, 0x04034b50, true); v.setUint16(4, 20, true); v.setUint16(6, 0x0800, true);
+    v.setUint16(8, 0, true); v.setUint16(10, ora, true); v.setUint16(12, giorno, true);
+    v.setUint32(14, crc, true); v.setUint32(18, dati.length, true); v.setUint32(22, dati.length, true);
+    v.setUint16(26, nome.length, true); v.setUint16(28, 0, true);
+    l.b.set(nome, 30);
+    var c = testa(46 + nome.length), w = new DataView(c.b.buffer);
+    w.setUint32(0, 0x02014b50, true); w.setUint16(4, 20, true); w.setUint16(6, 20, true);
+    w.setUint16(8, 0x0800, true); w.setUint16(10, 0, true); w.setUint16(12, ora, true); w.setUint16(14, giorno, true);
+    w.setUint32(16, crc, true); w.setUint32(20, dati.length, true); w.setUint32(24, dati.length, true);
+    w.setUint16(28, nome.length, true); w.setUint16(30, 0, true); w.setUint16(32, 0, true);
+    w.setUint16(34, 0, true); w.setUint16(36, 0, true); w.setUint32(38, 0, true); w.setUint32(42, pos, true);
+    c.b.set(nome, 46);
+    parti.push(l.b, dati);
+    centrale.push(c.b);
+    pos += l.b.length + dati.length;
+  });
+  var lunghC = centrale.reduce(function(s, x){ return s + x.length; }, 0);
+  var fine = new Uint8Array(22), e = new DataView(fine.buffer);
+  e.setUint32(0, 0x06054b50, true);
+  e.setUint16(8, file.length, true); e.setUint16(10, file.length, true);
+  e.setUint32(12, lunghC, true); e.setUint32(16, pos, true);
+  var tutto = parti.concat(centrale, [fine]);
+  var out = new Uint8Array(tutto.reduce(function(s, x){ return s + x.length; }, 0)), k = 0;
+  tutto.forEach(function(x){ out.set(x, k); k += x.length; });
+  return out;
+}
+
+/* ---------- il documento ---------- */
+/* il testo dentro l'XML: niente caratteri di controllo, che Word rifiuta */
+function xmlTesto(s){
+  return String(s == null ? "" : s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+/* un paragrafo; le righe del testo diventano a capo dentro il paragrafo */
+function wPar(testo, opz){
+  opz = opz || {};
+  var pPr = (opz.stile ? '<w:pStyle w:val="' + opz.stile + '"/>' : '') +
+            (opz.allinea ? '<w:jc w:val="' + opz.allinea + '"/>' : '') +
+            (opz.dopo != null ? '<w:spacing w:before="0" w:after="' + opz.dopo + '"/>' : '');
+  var rPr = (opz.grassetto ? '<w:b/>' : '') + (opz.corpo ? '<w:sz w:val="' + opz.corpo + '"/><w:szCs w:val="' + opz.corpo + '"/>' : '');
+  var righe = String(testo == null ? "" : testo).split(/\r?\n/);
+  var run = '<w:r>' + (rPr ? '<w:rPr>' + rPr + '</w:rPr>' : '') +
+    righe.map(function(r, i){ return (i ? '<w:br/>' : '') + '<w:t xml:space="preserve">' + xmlTesto(r) + '</w:t>'; }).join("") + '</w:r>';
+  return '<w:p>' + (pPr ? '<w:pPr>' + pPr + '</w:pPr>' : '') + run + '</w:p>';
+}
+function wCella(larghezza, testo, opz){
+  opz = opz || {};
+  return '<w:tc><w:tcPr><w:tcW w:w="' + larghezza + '" w:type="dxa"/>' +
+    (opz.span ? '<w:gridSpan w:val="' + opz.span + '"/>' : '') +
+    (opz.sfondo ? '<w:shd w:val="clear" w:color="auto" w:fill="' + opz.sfondo + '"/>' : '') +
+    '</w:tcPr>' + wPar(testo, {grassetto: opz.grassetto, allinea: opz.allinea, dopo: 0}) + '</w:tc>';
+}
+
+/* A4 verticale con margini di 2 cm: 9638 ventesimi di punto di testo */
+var COLONNE_RESOCONTO = [
+  {titolo: "Data", w: 1250},
+  {titolo: "Orario", w: 1300},
+  {titolo: "Docenti in compresenza", w: 2100},
+  {titolo: "Argomento", w: 2900},
+  {titolo: "Note", w: 2088}
+];
+
+function oreInParole(n){
+  var x = Math.round(n * 100) / 100;
+  var t = String(x).replace(".", ",");
+  return t + (x === 1 ? " ora" : " ore");
+}
+
+/* le attività svolte dell'anno, classe per classe; {} se non ce n'è */
+function resocontoPerClasse(m, anno){
+  var per = {};
+  attivitaDi(m, anno).forEach(function(v){
+    if(annullata(v)) return;
+    classiDi(v).forEach(function(c){ (per[c] = per[c] || []).push(v); });
+  });
+  return per;
+}
+
+function nomeDocente(){
+  return String(stato.config.docente || "").trim() ||
+         [stato.config.cognome || "", stato.config.nome || ""].join(" ").trim();
+}
+
+function tabellaClasse(voci){
+  var bordi = ["top", "left", "bottom", "right", "insideH", "insideV"].map(function(b){
+    return '<w:' + b + ' w:val="single" w:sz="4" w:space="0" w:color="808080"/>';
+  }).join("");
+  var tot = COLONNE_RESOCONTO.reduce(function(s, c){ return s + c.w; }, 0);
+  var h = '<w:tbl><w:tblPr><w:tblW w:w="' + tot + '" w:type="dxa"/><w:tblBorders>' + bordi + '</w:tblBorders>' +
+          '<w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr>';
+  h += '<w:tblGrid>' + COLONNE_RESOCONTO.map(function(c){ return '<w:gridCol w:w="' + c.w + '"/>'; }).join("") + '</w:tblGrid>';
+  h += '<w:tr><w:trPr><w:tblHeader/></w:trPr>' + COLONNE_RESOCONTO.map(function(c){
+    return wCella(c.w, c.titolo, {grassetto: true, sfondo: "E7E6E6"});
+  }).join("") + '</w:tr>';
+  var ore = 0;
+  voci.forEach(function(v){
+    ore += oreAttivita(v);
+    var celle = [dataItaliana(v.data), orarioTesto(v) || "—", compresenzaDi(v).join(", ") || "—",
+                 v.titolo || "", v.dettagli || ""];
+    h += '<w:tr><w:trPr><w:cantSplit/></w:trPr>' + celle.map(function(t, i){ return wCella(COLONNE_RESOCONTO[i].w, t); }).join("") + '</w:tr>';
+  });
+  var primi = tot - COLONNE_RESOCONTO[4].w;
+  h += '<w:tr>' + wCella(primi, "Totale ore svolte", {span: 4, grassetto: true, allinea: "right"}) +
+       wCella(COLONNE_RESOCONTO[4].w, oreInParole(ore), {grassetto: true}) + '</w:tr>';
+  return {xml: h + '</w:tbl>', ore: ore};
+}
+
+/* il documento intero; null se nell'anno non c'è nessuna attività */
+function documentoResoconto(m, anno){
+  var per = resocontoPerClasse(m, anno), classi = Object.keys(per).sort();
+  if(!classi.length) return null;
+  var corpo = wPar(m.sezione, {stile: "Titolo"}) +
+              wPar("Resoconto delle attività svolte · anno scolastico " + anno, {dopo: 40}) +
+              wPar("Docente: " + (nomeDocente() || "—"), {dopo: 240});
+  classi.forEach(function(c){
+    corpo += wPar("Classe " + c, {stile: "Titolo1"});
+    corpo += tabellaClasse(per[c]).xml;
+    corpo += wPar("", {dopo: 120});
+  });
+  var W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+  var testa = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  var documento = testa + '<w:document ' + W + '><w:body>' + corpo +
+    '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
+    '<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr>' +
+    '</w:body></w:document>';
+  var stili = testa + '<w:styles ' + W + '>' +
+    '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Calibri"/>' +
+    '<w:sz w:val="20"/><w:szCs w:val="20"/><w:lang w:val="it-IT"/></w:rPr></w:rPrDefault>' +
+    '<w:pPrDefault><w:pPr><w:spacing w:after="80" w:line="259" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>' +
+    '<w:style w:type="paragraph" w:default="1" w:styleId="Normale"><w:name w:val="Normal"/><w:qFormat/></w:style>' +
+    '<w:style w:type="paragraph" w:styleId="Titolo"><w:name w:val="Title"/><w:basedOn w:val="Normale"/><w:next w:val="Normale"/><w:qFormat/>' +
+    '<w:pPr><w:spacing w:after="80"/></w:pPr><w:rPr><w:b/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr></w:style>' +
+    '<w:style w:type="paragraph" w:styleId="Titolo1"><w:name w:val="heading 1"/><w:basedOn w:val="Normale"/><w:next w:val="Normale"/><w:qFormat/>' +
+    '<w:pPr><w:keepNext/><w:spacing w:before="240" w:after="80"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="26"/><w:szCs w:val="26"/></w:rPr></w:style>' +
+    '<w:style w:type="table" w:default="1" w:styleId="TabellaNormale"><w:name w:val="Normal Table"/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/>' +
+    '<w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style>' +
+    '</w:styles>';
+  var tipi = testa + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+    '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+    '</Types>';
+  var rels = testa + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+    '</Relationships>';
+  var relsDoc = testa + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+    '</Relationships>';
+  return zipSenzaCompressione([
+    {nome: "[Content_Types].xml", testo: tipi},
+    {nome: "_rels/.rels", testo: rels},
+    {nome: "word/document.xml", testo: documento},
+    {nome: "word/_rels/document.xml.rels", testo: relsDoc},
+    {nome: "word/styles.xml", testo: stili}
+  ]);
+}
+
+function nomeResoconto(m, anno){
+  return "Resoconto " + m.sezione + " a.s. " + String(anno).replace("/", "-") + ".docx";
+}
+
+/* scarica il resoconto; senza attività nell'anno lo dice e non scarica niente */
+function stampaResoconto(m, anno){
+  anno = anno || annoScolastico();
+  var byte = documentoResoconto(m, anno);
+  if(!byte){
+    notaFlash("Nessuna attività di " + m.sezione.toLowerCase().replace(/^sezione /, "") + " registrata nell'a.s. " + anno + ".");
+    return "";
+  }
+  var nome = nomeResoconto(m, anno);
+  scaricaFile(nome, new Blob([byte], {type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}));
+  return nome;
+}
+
 /* ===== documenti.js =============================================== */
 /* ============================================================
    DOCUMENTI DELLA SCUOLA
@@ -7907,6 +8492,16 @@ function avvisoCambioAnno(){
     '<p><b>È cominciato l\'anno scolastico ' + esc(annoDiOggi()) + '.</b> I dati dell\'a.s. ' + esc(anni.join(", ")) +
     ' (voci fino al 31 agosto, documenti caricati, nomina, delega, coordinatori) vanno tolti da qui e dall\'archivio su GitHub. ' +
     'Prima scarica il backup: è l\'unica copia che resta. Composizione dei consigli, rappresentanti e impostazioni restano.</p>' +
+    /* i resoconti delle attività vanno nella programmazione svolta di ogni
+       classe: dopo la pulizia quelle attività non ci sono più */
+    '<p><b>Prima della pulizia stampa anche i due resoconti</b> di Educazione civica e della sezione chimico-ambientale, ' +
+    'da inserire nella programmazione svolta di ciascuna classe.</p>' +
+    anni.map(function(a){
+      return '<div class="riga-input resoconti-anno">' + MONTEORE.map(function(m){
+        return '<button class="btn" type="button" data-cmd="att-resoconto" data-registro="' + esc(m.chiave) +
+               '" data-anno="' + esc(a) + '">Resoconto ' + esc(m.titolo.toLowerCase()) + ' ' + esc(a) + ' (.docx)</button>';
+      }).join("") + '</div>';
+    }).join("") +
     '<div class="riga-input"><button class="btn btn-primary" type="button" data-cmd="pulizia-backup">Scarica il backup del ' +
     esc(ultimo) + ' e pulisci</button>' +
     '<button class="btn" type="button" data-cmd="pulizia-senza-backup">Pulisci senza backup</button></div>' +
@@ -7955,7 +8550,10 @@ document.addEventListener("click", function(ev){
   var cmd=ev.target.closest("[data-cmd]");
   if(cmd){
     var c=cmd.dataset.cmd;
-    if(c==="nuova") apriVoce(null);
+    if(c==="nuova"){
+      if(registroDiVista(stato.vista)) apriAttivita(registroDiVista(stato.vista), null);
+      else apriVoce(null);
+    }
     else if(c==="esempi") caricaEsempi();
     else if(c==="impostazioni") cambiaVista("orario");
     else if(c==="leggi-doc"){
@@ -8204,6 +8802,8 @@ document.addEventListener("click", function(ev){
       STATO_IMPORT.mostraIntera = !STATO_IMPORT.mostraIntera;
       disegna();
     }
+    else if(c==="att-nuova") apriAttivita(registroDiVista(cmd.dataset.registro), null);
+    else if(c==="att-resoconto") stampaResoconto(registroDiVista(cmd.dataset.registro), cmd.dataset.anno || "");
     else if(c==="esporta-pdf") esportaPdf();
     else if(c==="esporta-json") esportaJson();
     else if(c==="esporta-csv") esportaCsv();
@@ -8496,8 +9096,10 @@ document.getElementById("btn-tema").addEventListener("click", function(){
 document.addEventListener("keydown", function(ev){
   if(ev.key==="n" && !ev.metaKey && !ev.ctrlKey && !ev.altKey){
     var t=ev.target.tagName;
-    if(t==="INPUT"||t==="TEXTAREA"||t==="SELECT"||dlg.open) return;
-    ev.preventDefault(); apriVoce(null);
+    if(t==="INPUT"||t==="TEXTAREA"||t==="SELECT"||dlg.open||dlgAtt.open) return;
+    ev.preventDefault();
+    if(registroDiVista(stato.vista)) apriAttivita(registroDiVista(stato.vista), null);
+    else apriVoce(null);
   }
 });
 
