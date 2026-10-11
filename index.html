@@ -879,6 +879,38 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
 .avviso-anno .resoconti-anno{flex-wrap:wrap;margin-bottom:10px}
 .tab-coord tr.mia input{font-weight:600}
 .tag-coord{background:var(--surface);border:1px dashed var(--line);color:var(--muted)}
+
+/* ---------- la cartella collegata ---------- */
+.cartella-stato progress{width:100%;height:10px;accent-color:var(--accent)}
+.cartella-saltati{margin:0;padding-left:18px;overflow-wrap:anywhere;font-size:13.5px;color:var(--muted)}
+.cartella-radice{padding:4px 0}
+.cartella-dir{border-top:1px solid var(--line-soft)}
+.cartella-radice > .cartella-dir:first-child{border-top:0}
+.cartella-dir > summary{
+  display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;min-height:44px;
+  font-weight:600;list-style:none;
+}
+.cartella-dir > summary::-webkit-details-marker{display:none}
+.cartella-dir > summary::before{content:"▸";color:var(--faint);flex:none}
+.cartella-dir[open] > summary::before{content:"▾"}
+.cartella-dir > summary .cartella-nome{min-width:0;overflow-wrap:anywhere}
+.cartella-conta{margin-left:auto;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;color:var(--faint);flex:none}
+.cartella-dentro{padding-left:14px;border-left:2px solid var(--line-soft);margin-left:18px}
+.cartella-file{
+  display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:44px;
+  padding:9px 14px;border:0;border-top:1px solid var(--line-soft);background:none;color:inherit;
+  font:inherit;text-align:left;cursor:pointer;
+}
+.cartella-radice > .cartella-file:first-child{border-top:0}
+.cartella-file:hover{background:var(--surface-2)}
+.cartella-file .cartella-nome{min-width:0;max-width:100%;overflow-wrap:anywhere;color:var(--accent)}
+.cartella-file .cartella-dati{font-size:12.5px;color:var(--faint)}
+.cartella-file[aria-busy="true"]{opacity:.6}
+@media (max-width:640px){
+  .cartella-dir > summary{padding:10px 8px}
+  .cartella-file{padding:9px 8px}
+  .cartella-dentro{padding-left:6px;margin-left:10px}
+}
 </style>
 <script>
 /* Il tema si applica prima di ogni altra cosa, così non si vede il lampo
@@ -913,6 +945,7 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
     <button class="tab" role="tab" data-vista="approf" aria-selected="false">Chimico-ambientale</button>
     <button class="tab" role="tab" data-vista="orario" aria-selected="false">Orario</button>
     <button class="tab" role="tab" data-vista="documenti" aria-selected="false">Documenti</button>
+    <button class="tab" role="tab" data-vista="cartella" aria-selected="false">Cartella</button>
     <button class="tab" role="tab" data-vista="impostazioni" aria-selected="false">Impostazioni</button>
   </nav>
 </header>
@@ -927,6 +960,7 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
   <section class="view" id="v-approf" hidden></section>
   <section class="view" id="v-orario" hidden></section>
   <section class="view" id="v-documenti" hidden></section>
+  <section class="view" id="v-cartella" hidden></section>
   <section class="view" id="v-impostazioni" hidden></section>
 </main>
 
@@ -945,6 +979,7 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
   <button class="voce-menu" type="button" data-vista-menu="approf">Sezione chimico-ambientale</button>
   <button class="voce-menu" type="button" data-vista-menu="orario">Orario</button>
   <button class="voce-menu" type="button" data-vista-menu="documenti">Documenti</button>
+  <button class="voce-menu" type="button" data-vista-menu="cartella">Cartella</button>
   <button class="voce-menu" type="button" data-vista-menu="impostazioni">Impostazioni</button>
   <div class="cassetto-piede">
     <a class="voce-menu" id="menu-orario" target="_blank" rel="noopener" hidden>Orario d'istituto ↗</a>
@@ -3233,6 +3268,7 @@ function disegnaImpostazioni(){
   h+='</div></section>';
 
   h+=riquadroSincronia();
+  h+=riquadroCartella();
   h+=riquadroDocumenti();
 
   h+='<section class="gruppo"><div class="gruppo-testa"><h2>Archivio</h2></div><div class="corpo-pannello">';
@@ -3275,6 +3311,7 @@ function disegna(){
   else if(stato.vista==="elenco") disegnaElenco();
   else if(stato.vista==="orario") disegnaOrario();
   else if(stato.vista==="documenti") disegnaDocumenti();
+  else if(stato.vista==="cartella") disegnaCartella();
   else if(registroDiVista(stato.vista)) disegnaRegistro(registroDiVista(stato.vista));
   else disegnaImpostazioni();
 }
@@ -8676,6 +8713,669 @@ function importa(testo){
   }
 }
 
+/* ===== cartella.js ================================================ */
+/* ============================================================
+   LA CARTELLA COLLEGATA
+   Il docente sceglie sul PC una cartella sola, con l'accesso alle
+   cartelle del browser, in sola lettura: l'agenda non vi scrive mai
+   e non può raggiungere nessun'altra cartella. La scelta si conserva
+   nel browser, in IndexedDB, così all'apertura successiva non va
+   rifatta; se il browser chiede di nuovo il permesso, basta un
+   pulsante.
+
+   Sui browser che non offrono l'accesso alle cartelle (il telefono,
+   Firefox, Safari) il riquadro lo dice e non mostra comandi.
+
+   La cartella si rispecchia nel deposito privato, sotto cartella/,
+   all'apertura dell'agenda sul PC e con «Aggiorna ora». Il confronto
+   si fa con l'indice cartella/indice.json (percorso, dimensione,
+   data di modifica): i file nuovi o modificati si caricano, quelli
+   spariti si eliminano, quelli oltre 50 MB si saltano. Un file alla
+   volta; ogni passo si annota nel browser, così un giro interrotto
+   riprende da dove era rimasto. Il rispecchiamento non tocca
+   nient'altro nel deposito, e nessun altro tocca cartella/.
+   ============================================================ */
+
+var DB_CARTELLA = "agenda-cartella";
+var ARCHIVIO_CARTELLA = "maniglie";
+var CHIAVE_MANIGLIA = "cartella";
+var RADICE_CARTELLA = "cartella";
+var INDICE_CARTELLA = "indice.json";
+var LIMITE_CARTELLA = 50 * 1024 * 1024;
+var TETTO_CONTENUTO = 1024 * 1024;           /* oltre, l'interfaccia dà il file soltanto grezzo */
+var GIORNALE_CARTELLA = "agenda-cartella-giro";
+var INDICE_OGNI = 10;                         /* ogni quanti passi l'indice si riscrive */
+/* i file che il sistema e Word lasciano nelle cartelle: non sono documenti */
+var FILE_DI_SISTEMA = /^(~\$.*|desktop\.ini|thumbs\.db|\.ds_store)$/i;
+
+/* lo stato della cartella su questo dispositivo: non viaggia con l'archivio */
+var CARTELLA = {
+  maniglia: null,      /* la cartella scelta, come la dà il browser */
+  permesso: "",        /* granted, prompt, denied */
+  letta: false,        /* la scelta conservata è già stata cercata */
+  fase: "",            /* percorro, carico, fatto, errore */
+  fatti: 0,
+  totale: 0,
+  corrente: "",
+  saltati: [],         /* [{percorso, dimensione, motivo}] */
+  presenti: 0,
+  messaggio: "",
+  ultimo: 0,
+  inCorso: null
+};
+
+function cartellaDisponibile(){
+  return typeof window.showDirectoryPicker === "function";
+}
+
+/* ---------- la scelta conservata ---------- */
+var dbCartellaPronto = null;
+function apriArchivioCartella(){
+  if(dbCartellaPronto) return dbCartellaPronto;
+  dbCartellaPronto = new Promise(function(risolvi, rifiuta){
+    if(!window.indexedDB){ rifiuta(new Error("Questo browser non conserva la cartella.")); return; }
+    var r = indexedDB.open(DB_CARTELLA, 1);
+    r.onupgradeneeded = function(){
+      if(!r.result.objectStoreNames.contains(ARCHIVIO_CARTELLA)) r.result.createObjectStore(ARCHIVIO_CARTELLA);
+    };
+    r.onsuccess = function(){ risolvi(r.result); };
+    r.onerror = function(){ rifiuta(r.error || new Error("archivio della cartella non disponibile")); };
+  });
+  return dbCartellaPronto;
+}
+function conArchivioCartella(modo, lavoro){
+  return apriArchivioCartella().then(function(db){
+    return new Promise(function(risolvi, rifiuta){
+      var t = db.transaction(ARCHIVIO_CARTELLA, modo);
+      var r = lavoro(t.objectStore(ARCHIVIO_CARTELLA));
+      t.oncomplete = function(){ risolvi(r && r.result); };
+      t.onerror = function(){ rifiuta(t.error); };
+      t.onabort = function(){ rifiuta(t.error); };
+    });
+  });
+}
+function salvaManiglia(m){
+  return conArchivioCartella("readwrite", function(st){ return st.put(m, CHIAVE_MANIGLIA); });
+}
+function leggiManiglia(){
+  return conArchivioCartella("readonly", function(st){ return st.get(CHIAVE_MANIGLIA); });
+}
+
+/* ---------- il permesso ---------- */
+function permessoCartella(m){
+  if(!m) return Promise.resolve("");
+  if(typeof m.queryPermission !== "function") return Promise.resolve("granted");
+  return m.queryPermission({mode: "read"}).catch(function(){ return "prompt"; });
+}
+
+/* all'apertura: ritrova la cartella scelta e guarda se il permesso c'è ancora */
+function ritrovaCartella(){
+  if(!cartellaDisponibile()){ CARTELLA.letta = true; return Promise.resolve(null); }
+  return leggiManiglia().then(function(m){
+    CARTELLA.maniglia = m || null;
+    return permessoCartella(CARTELLA.maniglia);
+  }).then(function(p){
+    CARTELLA.permesso = p;
+    CARTELLA.letta = true;
+    aggiornaRiquadroCartella();
+    return CARTELLA.maniglia;
+  }).catch(function(){
+    CARTELLA.letta = true;
+    aggiornaRiquadroCartella();
+    return null;
+  });
+}
+
+/* il pulsante «Scegli la cartella»: la finestra del sistema, in sola lettura */
+function scegliCartella(){
+  if(!cartellaDisponibile()) return Promise.resolve(null);
+  return window.showDirectoryPicker({id: "agenda-cartella", mode: "read"}).then(function(m){
+    CARTELLA.maniglia = m;
+    CARTELLA.permesso = "granted";
+    return salvaManiglia(m).catch(function(){}).then(function(){
+      /* una cartella nuova si rispecchia subito: il giro toglie dal deposito
+         quello della cartella di prima */
+      CARTELLA.saltati = [];
+      aggiornaRiquadroCartella();
+      rispecchiaCartella();
+      return m;
+    });
+  }, function(){
+    /* il docente ha chiuso la finestra senza scegliere: non è un errore */
+    return null;
+  });
+}
+
+/* il pulsante «Consenti l'accesso alla cartella»: la richiesta parte subito,
+   dentro il tocco, perché il browser la accetta soltanto lì */
+function consentiCartella(){
+  var m = CARTELLA.maniglia;
+  if(!m) return Promise.resolve(false);
+  var richiesta = typeof m.requestPermission === "function"
+    ? m.requestPermission({mode: "read"}) : Promise.resolve("granted");
+  return richiesta.catch(function(){ return "denied"; }).then(function(p){
+    CARTELLA.permesso = p;
+    aggiornaRiquadroCartella();
+    if(p === "granted") rispecchiaCartella();
+    return p === "granted";
+  });
+}
+
+/* ---------- la cartella, percorsa con tutte le sottocartelle ---------- */
+function percorriCartella(m, prefisso, fuori){
+  fuori = fuori || [];
+  var iteratore = m.values(), attese = [];
+  function avanti(){
+    return iteratore.next().then(function(passo){
+      if(passo.done) return Promise.all(attese);
+      var h = passo.value, percorso = (prefisso ? prefisso + "/" : "") + h.name;
+      if(h.kind === "directory"){
+        attese.push(percorriCartella(h, percorso, fuori));
+      }else if(!FILE_DI_SISTEMA.test(h.name)){
+        attese.push(h.getFile().then(function(f){
+          fuori.push({percorso: percorso, maniglia: h, dimensione: f.size, modificato: f.lastModified});
+        }));
+      }
+      return avanti();
+    });
+  }
+  return avanti().then(function(){ return fuori; });
+}
+
+/* ---------- il deposito ---------- */
+function percorsoCartella(rel){
+  return (RADICE_CARTELLA + "/" + rel).split("/").map(encodeURIComponent).join("/");
+}
+
+/* i byte in base64, a pezzi: un file grande in una volta sola non ci sta */
+function byteInBase64(buf){
+  var byte = new Uint8Array(buf), pezzi = [], i;
+  for(i = 0; i < byte.length; i += 0x8000){
+    pezzi.push(String.fromCharCode.apply(null, byte.subarray(i, i + 0x8000)));
+  }
+  return btoa(pezzi.join(""));
+}
+
+/* un file del deposito così com'è, con il tipo di contenuto grezzo */
+function leggiGrezzo(rel){
+  var c = impostazioniGitHub();
+  if(!c) return Promise.reject(new Error("senza chiave"));
+  var url = API_GITHUB + "/repos/" + encodeURIComponent(c.proprietario) + "/" + encodeURIComponent(c.archivio) +
+            "/contents/" + percorsoCartella(rel) + "?ref=" + encodeURIComponent(c.ramo);
+  return fetch(url, {headers: {"Authorization": "Bearer " + c.chiave, "Accept": "application/vnd.github.raw",
+                               "X-GitHub-Api-Version": "2022-11-28"}})
+    .then(function(r){
+      if(r.status !== 200) throw new Error("lettura non riuscita (" + r.status + ")");
+      return r.blob();
+    }, function(){ throw new Error("rete non raggiungibile"); });
+}
+
+/* l'indice del deposito, con il suo sha; vuoto se non c'è ancora */
+function leggiIndiceCartella(){
+  return chiamaGitHub("GET", percorsoCartella(INDICE_CARTELLA)).then(function(r){
+    if(r.stato === 404) return {indice: {versione: 1, file: {}}, sha: ""};
+    if(r.stato === 401 || r.stato === 403) throw new Error("chiave rifiutata da GitHub");
+    if(r.stato !== 200) throw new Error("lettura dell'indice non riuscita (" + r.stato + ")");
+    var sha = (r.dati && r.dati.sha) || "";
+    var testo = (r.dati && r.dati.content)
+      ? Promise.resolve(daBase64(r.dati.content))
+      : leggiGrezzo(INDICE_CARTELLA).then(function(b){ return b.text(); });
+    return testo.then(function(t){
+      var i = null;
+      try{ i = JSON.parse(t); }catch(e){ i = null; }
+      if(!i || typeof i !== "object") i = {versione: 1};
+      i.file = i.file || {};
+      return {indice: i, sha: sha};
+    });
+  });
+}
+
+/* lo sha attuale di un file del deposito, quando quello annotato non vale più */
+function shaRemoto(rel){
+  return chiamaGitHub("GET", percorsoCartella(rel)).then(function(r){
+    return r.stato === 200 && r.dati ? (r.dati.sha || "") : "";
+  });
+}
+
+/* scrive o elimina un file del deposito. Uno sha mancante o vecchio (422,
+   409) si rilegge e si riprova: capita dopo un giro interrotto, o quando un
+   altro dispositivo ha scritto nello stesso momento. */
+function scriviNelDeposito(metodo, rel, corpo, tentativo){
+  tentativo = tentativo || 0;
+  var c = impostazioniGitHub();
+  corpo.branch = c ? c.ramo : RAMO_PREDEFINITO;
+  return chiamaGitHub(metodo, percorsoCartella(rel), corpo).then(function(r){
+    if(r.stato === 200 || r.stato === 201) return (r.dati && r.dati.content && r.dati.content.sha) || "";
+    if(metodo === "DELETE" && r.stato === 404) return "";
+    if(r.stato === 401 || r.stato === 403) throw new Error("chiave rifiutata da GitHub");
+    if((r.stato === 409 || r.stato === 422) && tentativo < 3){
+      return shaRemoto(rel).then(function(sha){
+        if(sha) corpo.sha = sha; else delete corpo.sha;
+        if(metodo === "DELETE" && !sha) return "";
+        return scriviNelDeposito(metodo, rel, corpo, tentativo + 1);
+      });
+    }
+    throw new Error("scrittura di " + rel + " non riuscita (" + r.stato + ")");
+  });
+}
+
+function scriviIndiceCartella(indice, sha){
+  indice.versione = 1;
+  indice.aggiornato = new Date().toISOString();
+  return scriviNelDeposito("PUT", INDICE_CARTELLA, {
+    message: "cartella: indice",
+    content: inBase64(JSON.stringify(indice, null, 1)),
+    sha: sha || undefined
+  });
+}
+
+/* ---------- il giornale del giro, per riprendere ---------- */
+function leggiGiornale(){
+  try{ return JSON.parse(localStorage.getItem(GIORNALE_CARTELLA) || "{}") || {}; }catch(e){ return {}; }
+}
+function annotaNelGiornale(rel, voce){
+  var g = leggiGiornale();
+  g[rel] = voce;
+  try{ localStorage.setItem(GIORNALE_CARTELLA, JSON.stringify(g)); }catch(e){}
+}
+function svuotaGiornale(){
+  try{ localStorage.removeItem(GIORNALE_CARTELLA); }catch(e){}
+}
+
+/* ---------- il giro di rispecchiamento ---------- */
+function cambiato(f, v){
+  return !v || v.dimensione !== f.dimensione || v.modificato !== f.modificato;
+}
+
+function rispecchiaCartella(){
+  if(CARTELLA.inCorso) return CARTELLA.inCorso;
+  if(!CARTELLA.maniglia || CARTELLA.permesso !== "granted" || !impostazioniGitHub()) return Promise.resolve(false);
+
+  CARTELLA.fase = "percorro";
+  CARTELLA.messaggio = "";
+  CARTELLA.fatti = 0;
+  CARTELLA.totale = 0;
+  CARTELLA.corrente = "";
+  aggiornaRiquadroCartella();
+
+  var indice, shaIndice, daScrivere = false, passi = 0;
+
+  function salvaIndice(){
+    return scriviIndiceCartella(indice, shaIndice).then(function(sha){
+      shaIndice = sha;
+      daScrivere = false;
+      passi = 0;
+      svuotaGiornale();
+    });
+  }
+
+  CARTELLA.inCorso = Promise.all([percorriCartella(CARTELLA.maniglia, ""), leggiIndiceCartella()]).then(function(r){
+    var presenti = r[0];
+    indice = r[1].indice;
+    shaIndice = r[1].sha;
+
+    /* quello che un giro interrotto aveva già fatto, e l'indice non sa ancora */
+    var g = leggiGiornale();
+    Object.keys(g).forEach(function(rel){
+      if(g[rel]) indice.file[rel] = g[rel]; else delete indice.file[rel];
+      daScrivere = true;
+    });
+
+    var visti = {}, caricare = [], saltati = [];
+    presenti.forEach(function(f){
+      visti[f.percorso] = true;
+      if(f.percorso === INDICE_CARTELLA){
+        saltati.push({percorso: f.percorso, dimensione: f.dimensione, motivo: "nome riservato all'indice"});
+      }else if(f.dimensione > LIMITE_CARTELLA){
+        saltati.push({percorso: f.percorso, dimensione: f.dimensione, motivo: "oltre 50 MB"});
+      }else if(cambiato(f, indice.file[f.percorso])){
+        caricare.push(f);
+      }
+    });
+    var eliminare = Object.keys(indice.file).filter(function(rel){ return !visti[rel]; });
+    caricare.sort(function(a, b){ return a.percorso < b.percorso ? -1 : 1; });
+    eliminare.sort();
+
+    CARTELLA.saltati = saltati.sort(function(a, b){ return a.percorso < b.percorso ? -1 : 1; });
+    CARTELLA.totale = caricare.length + eliminare.length;
+    CARTELLA.fase = "carico";
+    aggiornaRiquadroCartella();
+
+    /* un file alla volta */
+    var passiDaFare = caricare.map(function(f){ return {carica: f}; })
+                      .concat(eliminare.map(function(rel){ return {elimina: rel}; }));
+    function prossimo(i){
+      if(i >= passiDaFare.length) return null;
+      var x = passiDaFare[i];
+      var lavoro;
+      if(x.carica){
+        var f = x.carica, prima = indice.file[f.percorso];
+        CARTELLA.corrente = f.percorso;
+        aggiornaRiquadroCartella();
+        lavoro = f.maniglia.getFile().then(function(file){ return file.arrayBuffer(); }).then(function(buf){
+          return scriviNelDeposito("PUT", f.percorso, {
+            message: "cartella: " + f.percorso,
+            content: byteInBase64(buf),
+            sha: (prima && prima.sha) || undefined
+          });
+        }).then(function(sha){
+          var v = {dimensione: f.dimensione, modificato: f.modificato, sha: sha};
+          indice.file[f.percorso] = v;
+          annotaNelGiornale(f.percorso, v);
+        });
+      }else{
+        var rel = x.elimina, v = indice.file[rel] || {};
+        CARTELLA.corrente = rel;
+        aggiornaRiquadroCartella();
+        lavoro = scriviNelDeposito("DELETE", rel, {message: "cartella: tolto " + rel, sha: v.sha || undefined}).then(function(){
+          delete indice.file[rel];
+          annotaNelGiornale(rel, null);
+        });
+      }
+      return lavoro.then(function(){
+        CARTELLA.fatti++;
+        daScrivere = true;
+        passi++;
+        aggiornaRiquadroCartella();
+        return passi >= INDICE_OGNI ? salvaIndice() : null;
+      }).then(function(){ return prossimo(i + 1); });
+    }
+    return prossimo(0);
+  }).then(function(){
+    return daScrivere ? salvaIndice() : null;
+  }).then(function(){
+    CARTELLA.fase = "fatto";
+    CARTELLA.corrente = "";
+    CARTELLA.presenti = Object.keys(indice.file).length;
+    CARTELLA.ultimo = Date.now();
+    salvaIndiceLocale(indice);
+    return true;
+  }).catch(function(e){
+    CARTELLA.fase = "errore";
+    CARTELLA.messaggio = (e && e.message) ? e.message : "rispecchiamento non riuscito";
+    return false;
+  }).then(function(esito){
+    CARTELLA.inCorso = null;
+    aggiornaRiquadroCartella();
+    return esito;
+  });
+  return CARTELLA.inCorso;
+}
+
+/* l'ultimo indice, tenuto anche nel browser: la sezione Cartella lo mostra
+   subito e senza rete */
+var INDICE_LOCALE = "agenda-cartella-indice";
+function salvaIndiceLocale(indice){
+  try{ localStorage.setItem(INDICE_LOCALE, JSON.stringify(indice)); }catch(e){}
+}
+
+function misura(n){
+  if(n >= 1024 * 1024) return (n / 1024 / 1024).toFixed(1).replace(".", ",") + " MB";
+  if(n >= 1024) return Math.round(n / 1024) + " kB";
+  return n + " byte";
+}
+
+/* ---------- il riquadro, in Impostazioni › Dati e backup ---------- */
+function riquadroCartella(){
+  var h = '<section class="gruppo" id="riquadro-cartella"><div class="gruppo-testa"><h2>Cartella collegata</h2>' +
+          (CARTELLA.maniglia ? '<span class="quando">' + esc(CARTELLA.maniglia.name) + '</span>' : '') +
+          '</div><div class="corpo-pannello">';
+  if(!cartellaDisponibile()){
+    h += '<p>Questo browser non offre l\'accesso alle cartelle del computer. La cartella si collega dal PC, ' +
+         'con Chrome o con Edge; qui i suoi documenti si consultano nella sezione <b>Cartella</b>.</p>';
+    return h + '</div></section>';
+  }
+  if(!CARTELLA.letta){
+    return h + '<p class="aiuto">Cerco la cartella scelta…</p></div></section>';
+  }
+  if(!CARTELLA.maniglia){
+    h += '<p>Una cartella del PC i cui documenti si ritrovano nell\'agenda, anche sul telefono. ' +
+         'L\'agenda la legge soltanto: non vi scrive mai e non vede nessun\'altra cartella.</p>';
+    h += '<div class="riga-input"><button class="btn btn-primary" type="button" data-cmd="cartella-scegli">Scegli la cartella</button></div>';
+    return h + '</div></section>';
+  }
+  if(CARTELLA.permesso !== "granted"){
+    h += '<p>Il browser chiede di nuovo il permesso di leggere la cartella <b>' + esc(CARTELLA.maniglia.name) + '</b>.</p>';
+    h += '<div class="riga-input"><button class="btn btn-primary" type="button" data-cmd="cartella-consenti">Consenti l\'accesso alla cartella</button></div>';
+    return h + '</div></section>';
+  }
+  h += '<p>La cartella <b>' + esc(CARTELLA.maniglia.name) + '</b> è collegata, in sola lettura, e si rispecchia ' +
+       'nell\'archivio su GitHub, sotto <b>cartella/</b>, ogni volta che l\'agenda si apre su questo PC.</p>';
+  if(!impostazioniGitHub()){
+    h += '<div class="avviso">Senza la chiave dell\'archivio la cartella non si rispecchia: incollala nel riquadro qui sopra.</div>';
+  }
+  h += avanzamentoCartella();
+  h += '<div class="riga-input" style="flex-wrap:wrap">' +
+       '<button class="btn btn-primary" type="button" data-cmd="cartella-aggiorna"' +
+       (CARTELLA.inCorso || !impostazioniGitHub() ? ' disabled' : '') + '>Aggiorna ora</button>' +
+       '<button class="btn" type="button" data-cmd="cartella-scegli"' + (CARTELLA.inCorso ? ' disabled' : '') +
+       '>Scegli un\'altra cartella</button></div>';
+  return h + '</div></section>';
+}
+
+/* a che punto è il giro, e quali file sono rimasti fuori */
+function avanzamentoCartella(){
+  var h = '<div class="cartella-stato" aria-live="polite">';
+  if(CARTELLA.fase === "percorro"){
+    h += '<p class="aiuto">Percorro la cartella e la confronto con l\'indice…</p>';
+  }else if(CARTELLA.fase === "carico"){
+    h += '<p class="aiuto">' + (CARTELLA.totale
+         ? 'Aggiorno ' + Math.min(CARTELLA.fatti + 1, CARTELLA.totale) + ' di ' + CARTELLA.totale +
+           (CARTELLA.corrente ? ': <b>' + esc(CARTELLA.corrente) + '</b>' : '')
+         : 'Nessun file da aggiornare.') + '</p>' +
+         '<progress max="' + Math.max(CARTELLA.totale, 1) + '" value="' + CARTELLA.fatti + '"></progress>';
+  }else if(CARTELLA.fase === "fatto"){
+    h += '<p class="aiuto">Rispecchiata ' + esc(quandoLeggibile(CARTELLA.ultimo)) + ': ' + CARTELLA.presenti +
+         ' file nell\'archivio' +
+         (CARTELLA.totale ? ', ' + CARTELLA.totale + (CARTELLA.totale === 1 ? ' aggiornato' : ' aggiornati') + ' in questo giro' : '') + '.</p>';
+  }else if(CARTELLA.fase === "errore"){
+    h += '<div class="avviso">Il rispecchiamento si è fermato dopo ' + CARTELLA.fatti + ' di ' + CARTELLA.totale +
+         ' file: ' + esc(CARTELLA.messaggio) + '. Riprende da qui alla prossima apertura, o con «Aggiorna ora».</div>';
+  }
+  if(CARTELLA.saltati.length){
+    h += '<p class="aiuto">Non caricati:</p><ul class="cartella-saltati">' + CARTELLA.saltati.map(function(s){
+      return '<li><b>' + esc(s.percorso) + '</b> · ' + esc(misura(s.dimensione)) + ' · ' + esc(s.motivo) + '</li>';
+    }).join("") + '</ul>';
+  }
+  return h + '</div>';
+}
+
+/* il riquadro si ridisegna da solo, senza ridisegnare la vista intera */
+function aggiornaRiquadroCartella(){
+  var el = document.getElementById("riquadro-cartella");
+  if(el) el.outerHTML = riquadroCartella();
+  if(stato.vista === "cartella") disegnaCartella();
+}
+
+/* ============ la sezione Cartella: l'albero dell'indice ============ */
+/* Si legge dal deposito l'indice, e da quello l'albero delle sottocartelle e
+   dei file. Funziona su ogni dispositivo con la chiave: è il telefono il
+   posto in cui serve. L'ultimo indice letto resta nel browser e si mostra
+   subito, anche senza rete. */
+var VISTA_CARTELLA = {chiesto: false, leggo: false, messaggio: "", aperte: {}, apro: ""};
+
+function indiceLocale(){
+  try{ return JSON.parse(localStorage.getItem(INDICE_LOCALE) || "null"); }catch(e){ return null; }
+}
+
+function ricaricaIndice(){
+  if(!impostazioniGitHub()) return Promise.resolve(false);
+  VISTA_CARTELLA.leggo = true;
+  VISTA_CARTELLA.messaggio = "";
+  if(stato.vista === "cartella") disegnaCartella();
+  return leggiIndiceCartella().then(function(r){
+    salvaIndiceLocale(r.indice);
+    return true;
+  }).catch(function(e){
+    VISTA_CARTELLA.messaggio = (e && e.message) ? e.message : "lettura non riuscita";
+    return false;
+  }).then(function(esito){
+    VISTA_CARTELLA.leggo = false;
+    if(stato.vista === "cartella") disegnaCartella();
+    return esito;
+  });
+}
+
+/* dai percorsi all'albero: {cartelle: {nome: albero}, file: [{nome, percorso, ...}]} */
+function alberoDi(file){
+  var radice = {cartelle: {}, file: []};
+  Object.keys(file || {}).forEach(function(rel){
+    var parti = rel.split("/"), nodo = radice;
+    parti.slice(0, -1).forEach(function(x){
+      nodo = nodo.cartelle[x] = nodo.cartelle[x] || {cartelle: {}, file: []};
+    });
+    nodo.file.push(Object.assign({nome: parti[parti.length - 1], percorso: rel}, file[rel]));
+  });
+  return radice;
+}
+function quantiFile(nodo){
+  return nodo.file.length + Object.keys(nodo.cartelle).reduce(function(n, k){ return n + quantiFile(nodo.cartelle[k]); }, 0);
+}
+function perNome(a, b){ return String(a).localeCompare(String(b), "it", {sensitivity: "base", numeric: true}); }
+
+function dataFile(ms){
+  var d = new Date(ms);
+  if(!ms || isNaN(d.getTime())) return "";
+  return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
+}
+
+function disegnaNodo(nodo, base){
+  var h = "";
+  Object.keys(nodo.cartelle).sort(perNome).forEach(function(nome){
+    var rel = (base ? base + "/" : "") + nome, figlio = nodo.cartelle[nome];
+    h += '<details class="cartella-dir" data-cartella-dir="' + esc(rel) + '"' + (VISTA_CARTELLA.aperte[rel] ? ' open' : '') + '>' +
+         '<summary><span class="cartella-nome">' + esc(nome) + '</span><span class="cartella-conta">' + quantiFile(figlio) + '</span></summary>' +
+         '<div class="cartella-dentro">' + disegnaNodo(figlio, rel) + '</div></details>';
+  });
+  nodo.file.sort(function(a, b){ return perNome(a.nome, b.nome); }).forEach(function(f){
+    h += '<button type="button" class="cartella-file" data-cartella-file="' + esc(f.percorso) + '"' +
+         (VISTA_CARTELLA.apro === f.percorso ? ' aria-busy="true"' : '') + '>' +
+         '<span class="cartella-nome">' + esc(f.nome) + '</span>' +
+         '<span class="cartella-dati">' + esc(misura(f.dimensione || 0)) + ' · ' + esc(dataFile(f.modificato)) +
+         (VISTA_CARTELLA.apro === f.percorso ? ' · apro…' : '') + '</span></button>';
+  });
+  return h;
+}
+
+function disegnaCartella(){
+  var el = document.getElementById("v-cartella");
+  if(!el) return;
+  /* alla prima apertura della sezione l'indice si rilegge dal deposito */
+  if(!VISTA_CARTELLA.chiesto && impostazioniGitHub()){
+    VISTA_CARTELLA.chiesto = true;
+    ricaricaIndice();
+    return;
+  }
+  var indice = indiceLocale(), file = (indice && indice.file) || {};
+  var h = testaVista("Cartella", "I documenti della cartella collegata sul PC, come stanno nell'archivio su GitHub. " +
+                     "Un tocco apre il file: i PDF e le immagini nel browser, gli altri si scaricano.", "");
+  h += '<div class="registro cartella-vista"><div class="cartella-albero">';
+  if(VISTA_CARTELLA.messaggio) h += '<div class="avviso">L\'elenco non si è potuto aggiornare: ' + esc(VISTA_CARTELLA.messaggio) + '.</div>';
+  if(!impostazioniGitHub() && !indice){
+    h += '<div class="vuoto"><h2>Nessun elenco</h2><p>Senza la chiave dell\'archivio l\'elenco della cartella non si legge. ' +
+         'La chiave si incolla in Impostazioni, Dati e backup.</p></div>';
+  }else if(VISTA_CARTELLA.leggo && !indice){
+    h += '<div class="vuoto"><h2>Leggo l\'elenco…</h2></div>';
+  }else if(!Object.keys(file).length){
+    h += '<div class="vuoto"><h2>La cartella è vuota</h2><p>Si collega dal PC, in Impostazioni, Dati e backup: ' +
+         'i suoi documenti compaiono qui dopo il primo rispecchiamento.</p></div>';
+  }else{
+    h += '<section class="gruppo"><div class="gruppo-testa"><h2>' + esc((CARTELLA.maniglia && CARTELLA.maniglia.name) || "Cartella collegata") +
+         '</h2><span class="conta">' + Object.keys(file).length + ' file</span></div>' +
+         '<div class="cartella-radice">' + disegnaNodo(alberoDi(file), "") + '</div></section>';
+    if(indice.aggiornato) h += '<p class="aiuto">Elenco aggiornato ' + esc(quandoLeggibile(indice.aggiornato)) + '.</p>';
+  }
+  h += '</div><aside class="registro-comandi" aria-label="Comandi della cartella">';
+  h += '<button class="btn" type="button" data-cmd="cartella-elenco"' + (VISTA_CARTELLA.leggo || !impostazioniGitHub() ? ' disabled' : '') +
+       '>' + (VISTA_CARTELLA.leggo ? 'Leggo…' : 'Ricarica l\'elenco') + '</button>';
+  if(cartellaDisponibile() && CARTELLA.maniglia){
+    if(CARTELLA.permesso !== "granted"){
+      h += '<button class="btn btn-primary" type="button" data-cmd="cartella-consenti">Consenti l\'accesso alla cartella</button>';
+    }else{
+      h += '<button class="btn btn-primary" type="button" data-cmd="cartella-aggiorna"' +
+           (CARTELLA.inCorso || !impostazioniGitHub() ? ' disabled' : '') + '>' +
+           (CARTELLA.inCorso ? 'Aggiorno ' + Math.min(CARTELLA.fatti + 1, Math.max(CARTELLA.totale, 1)) + ' di ' + Math.max(CARTELLA.totale, 1) : 'Aggiorna ora') +
+           '</button>';
+    }
+  }
+  h += '</aside></div>';
+  el.innerHTML = h;
+}
+
+/* il tipo di contenuto dal nome: quelli che il browser sa mostrare */
+var TIPI_VISIBILI = {pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+                     gif: "image/gif", webp: "image/webp", bmp: "image/bmp"};
+function tipoVisibile(nome){
+  var m = String(nome).toLowerCase().match(/\.([a-z0-9]+)$/);
+  return m ? (TIPI_VISIBILI[m[1]] || "") : "";
+}
+
+/* il contenuto di un file della cartella dal deposito: fino a 1 MB
+   l'interfaccia lo dà in base64, oltre serve il tipo grezzo */
+function leggiFileCartella(rel, voce){
+  if(voce && voce.dimensione > TETTO_CONTENUTO) return leggiGrezzo(rel);
+  return chiamaGitHub("GET", percorsoCartella(rel)).then(function(r){
+    if(r.stato === 404) throw new Error("il file non è più nell'archivio");
+    if(r.stato !== 200) throw new Error("lettura non riuscita (" + r.stato + ")");
+    if(!r.dati || !r.dati.content) return leggiGrezzo(rel);
+    var s = atob(String(r.dati.content).replace(/\s+/g, "")), byte = new Uint8Array(s.length), i;
+    for(i = 0; i < s.length; i++) byte[i] = s.charCodeAt(i);
+    return new Blob([byte]);
+  });
+}
+
+function apriFileCartella(rel){
+  var indice = indiceLocale(), voce = indice && indice.file && indice.file[rel];
+  var nome = rel.split("/").pop(), tipo = tipoVisibile(nome);
+  /* la scheda si apre subito, dentro il tocco: dopo l'attesa della rete il
+     browser la bloccherebbe */
+  var scheda = tipo ? window.open("", "_blank") : null;
+  VISTA_CARTELLA.apro = rel;
+  disegnaCartella();
+  return leggiFileCartella(rel, voce).then(function(blob){
+    var file = new Blob([blob], {type: tipo || "application/octet-stream"});
+    if(tipo){
+      var url = URL.createObjectURL(file);
+      if(scheda && !scheda.closed) scheda.location.href = url;
+      else{
+        var a = document.createElement("a");
+        a.href = url; a.target = "_blank"; a.rel = "noopener";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      }
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+    }else{
+      scaricaFile(nome, file);
+    }
+    return true;
+  }).catch(function(e){
+    if(scheda && !scheda.closed) scheda.close();
+    notaFlash("Il file non si è potuto aprire: " + ((e && e.message) || "riprova fra poco") + ".");
+    return false;
+  }).then(function(esito){
+    VISTA_CARTELLA.apro = "";
+    if(stato.vista === "cartella") disegnaCartella();
+    return esito;
+  });
+}
+
+/* le sottocartelle aperte restano aperte quando la vista si ridisegna */
+document.addEventListener("toggle", function(ev){
+  var d = ev.target;
+  if(d && d.dataset && d.dataset.cartellaDir !== undefined) VISTA_CARTELLA.aperte[d.dataset.cartellaDir] = d.open;
+}, true);
+
+document.addEventListener("click", function(ev){
+  var f = ev.target.closest("[data-cartella-file]");
+  if(f){ if(!VISTA_CARTELLA.apro) apriFileCartella(f.dataset.cartellaFile); return; }
+  var b = ev.target.closest("[data-cmd]");
+  if(!b) return;
+  var c = b.dataset.cmd;
+  if(c === "cartella-scegli") scegliCartella();
+  else if(c === "cartella-consenti") consentiCartella();
+  else if(c === "cartella-aggiorna") rispecchiaCartella();
+  else if(c === "cartella-elenco") ricaricaIndice();
+});
+
 /* ===== cambio-anno.js ============================================= */
 /* ============================================================
    CAMBIO D'ANNO SCOLASTICO
@@ -9428,6 +10128,9 @@ potaCancellate();
    per un'agenda lasciata aperta a cavallo della data */
 if(!VUOTO_ALL_AVVIO) aggiornaAnnoImpostazioni();
 setInterval(controllaCambioAnno, 3600000);
+/* la cartella collegata, se su questo PC ne è stata scelta una: con il
+   permesso e la chiave, si rispecchia subito nel deposito */
+ritrovaCartella().then(function(){ rispecchiaCartella(); });
 
 if(!VUOTO_ALL_AVVIO){
   disegna();
@@ -9488,6 +10191,9 @@ window.agenda = {
   apriVoce: apriVoce,
   mostraBenvenuto: mostraBenvenuto,
   disegna: disegna,
+  cartella: CARTELLA,
+  ritrovaCartella: ritrovaCartella,
+  rispecchiaCartella: rispecchiaCartella,
   pronta: true
 };
 })();
