@@ -515,6 +515,18 @@ a.tag-fonte:hover{color:var(--accent);border-color:var(--accent)}
 .gruppo.rivedere .gruppo-testa h2{color:var(--ocra)}
 .riga.rivedere{border-left-color:var(--ocra)}
 .civica-conf{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center}
+.monte-riga{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:6px 0;border-top:1px solid var(--line-soft)}
+.monte-riga:first-of-type{border-top:0}
+.monte-assegnate{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.monte-assegnate input{width:5.5em}
+.monte-conto{display:inline-flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--muted)}
+.monte-conto b{color:var(--ink);font-weight:600}
+.mo-eccedenza b{color:var(--ossido)}
+.vai-registro{cursor:pointer;border:0;font:inherit}
+.vai-registro:hover{filter:brightness(1.15)}
+.registro .gruppo.in-vista{outline:2px solid var(--accent);outline-offset:-1px}
+.registro .bilancio{white-space:normal;text-align:right}
+.nw{white-space:nowrap}
 .civica-conf input[type=number]{width:100%}
 .avanzamento .lab{display:flex;gap:12px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
 .avanzamento .lab b{color:var(--ink);font-family:"IBM Plex Mono",ui-monospace,monospace;font-weight:600}
@@ -1001,10 +1013,6 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
           <option value="1º quadrimestre">1º quadrimestre</option>
           <option value="2º quadrimestre">2º quadrimestre</option>
         </select>
-      </div>
-      <div class="campo" id="riga-durata" hidden>
-        <label for="f-durata">Durata in ore</label>
-        <input id="f-durata" name="durata" type="number" min="0.5" max="10" step="0.5" value="1">
       </div>
       <div class="campo">
         <label for="f-fonte">Circolare di riferimento</label>
@@ -1683,20 +1691,35 @@ function cfgMonte(m){
 function classiMonte(m){
   return elencoClassi();
 }
-function bilancioMonte(classe, m){
+/* Il bilancio di una classe in una sezione, per un anno scolastico (quello
+   in corso, se non si dice). A mano si scrivono soltanto le ore assegnate,
+   in Impostazioni › Monte ore; il resto si conta dalle attività della
+   sezione (registro.js), con le ore ricavate da inizio e fine: svolte le
+   attività chiuse, programmate quelle ancora da fare, le annullate niente.
+   Le residue sono le assegnate meno le svolte; quando le svolte superano le
+   assegnate, la differenza è l'eccedenza. */
+function bilancioMonte(classe, m, anno){
+  anno=anno||annoScolastico();
   var cfg=cfgMonte(m)[classe]||{};
   var previste=Number(cfg.ore)||0;
-  var svolte=0, programmate=0;
+  var svolte=0, programmate=0, attivita=0;
   elencoVoci().forEach(function(v){
-    if(v.tipo!==m.tipo || v.classe!==classe) return;
-    var d=Number(v.durata)||1;
-    var st=v.stato||"";
-    if(st==="annullata"||st==="annullato") return;
+    if(v.tipo!==m.tipo || !haClasse(v, classe)) return;
+    if(v.data && annoScolasticoDi(v.data)!==anno) return;
+    if(annullata(v)) return;
+    var d=oreAttivita(v);
+    attivita++;
     if(chiusa(v)) svolte+=d; else programmate+=d;
   });
-  return {previste:previste, svolte:svolte, programmate:programmate,
-          mancanti:Math.max(0, previste-svolte-programmate),
-          periodo:cfg.periodo||""};
+  return {previste:previste, svolte:svolte, programmate:programmate, attivita:attivita,
+          residue:Math.max(0, previste-svolte),
+          eccedenza:previste ? Math.max(0, svolte-previste) : 0};
+}
+/* «svolte 2 su 33 h, residue 31 h»: la stessa frase ovunque compaia */
+function fraseBilancio(b){
+  if(!b.previste) return "svolte "+oreTesto(b.svolte)+", ore assegnate da scrivere";
+  return "svolte "+oreTesto(b.svolte).replace(/ h$/,"")+" su "+oreTesto(b.previste)+", "+
+         (b.eccedenza ? "eccedenza "+oreTesto(b.eccedenza) : "residue "+oreTesto(b.residue));
 }
 function orarioDelGiorno(chiave){
   var g=(stato.config.orario||{})[chiave];
@@ -2824,19 +2847,18 @@ function railMonteUnico(){
 }
 function rigaMonte(c, m){
   var b=bilancioMonte(c, m);
-  var h='<div class="civica-riga"><span class="tag tag-classe">'+esc(c)+'</span>';
-  h+='<button class="btn btn-sm btn-ghost" type="button" data-nuova-tipo="'+esc(m.tipo)+'" data-nuova-classe="'+esc(c)+'" title="Aggiungi un argomento per '+esc(c)+'">+</button>';
+  var h='<div class="civica-riga"><button type="button" class="tag tag-classe vai-registro" data-registro-vai="'+esc(m.chiave)+'" data-classe="'+esc(c)+'" '+
+        'title="Le attività di '+esc(m.titolo.toLowerCase())+' della '+esc(c)+'">'+esc(c)+' ›</button>';
   if(!b.previste){
     var tot=b.svolte+b.programmate;
     if(!tot){ h+='<span class="quanto manca">da definire</span>'; return h+'</div>'; }
-    h+='<span class="quanto '+(b.programmate?"":"fatto")+'">'+oreTesto(b.svolte)+' su '+oreTesto(tot)+'</span>';
+    h+='<span class="quanto '+(b.programmate?"":"fatto")+'">'+esc(fraseBilancio(b))+'</span>';
     h+='<div class="barra"><i class="'+m.classeBarra+'" style="width:'+(b.svolte/tot*100)+'%"></i>'+
        '<i class="civ-prog" style="width:'+(b.programmate/tot*100)+'%"></i></div>';
     return h+'</div>';
   }
-  var cls = b.mancanti===0 ? (b.svolte>=b.previste?"fatto":"") : "manca";
-  h+='<span class="quanto '+cls+'">'+oreTesto(b.svolte)+' su '+oreTesto(b.previste)+
-     (b.mancanti?' · mancano '+oreTesto(b.mancanti):'')+'</span>';
+  var cls = b.residue===0 ? "fatto" : "manca";
+  h+='<span class="quanto '+cls+'">'+esc(fraseBilancio(b))+'</span>';
   var pS=Math.min(100, b.svolte/b.previste*100);
   var pP=Math.min(100-pS, b.programmate/b.previste*100);
   h+='<div class="barra"><i class="'+m.classeBarra+'" style="width:'+pS+'%"></i><i class="civ-prog" style="width:'+pP+'%"></i></div>';
@@ -2990,9 +3012,8 @@ function disegnaClassi(){
       }
       if(!(bc.previste||bc.svolte||bc.programmate)) return;
       var base=bc.previste||(bc.svolte+bc.programmate);
-      h+='<div class="avanzamento"><div class="lab"><span>'+esc(m.titolo)+': <b>'+oreTesto(bc.svolte)+'</b> su <b>'+oreTesto(base)+'</b></span>';
-      if(bc.programmate) h+='<span><b>'+oreTesto(bc.programmate)+'</b> in calendario</span>';
-      if(bc.mancanti) h+='<span style="color:var(--ocra)"><b>'+oreTesto(bc.mancanti)+'</b> da programmare</span>';
+      h+='<div class="avanzamento"><div class="lab"><span>'+esc(m.titolo)+': '+esc(fraseBilancio(bc))+'</span>';
+      if(bc.programmate) h+='<span><b>'+oreTesto(bc.programmate)+'</b> programmate</span>';
       h+='</div><div class="barra">';
       if(base){
         var ps=Math.min(100, bc.svolte/base*100);
@@ -3169,24 +3190,28 @@ function disegnaImpostazioni(){
   if(sez==="ore"){
 
   MONTEORE.forEach(function(m){
-    var cf=stato.config[m.chiave]||{fine1q:"",classi:{}};
+    var cf=stato.config[m.chiave]||{classi:{}};
     var elenco=classiMonte(m);
-    h+='<section class="gruppo"><div class="gruppo-testa"><h2>'+esc(m.titolo)+'</h2></div><div class="corpo-pannello">';
-    h+='<p>'+esc(m.nota)+' Scrivi il monte ore accanto alla classe a cui si applica e lascia vuote le altre; '+
-       'il cruscotto conta quante ore restano da collocare. Senza monte ore, somma soltanto quello che hai già programmato.</p>';
+    h+='<section class="gruppo"><div class="gruppo-testa"><h2>'+esc(m.titolo)+'</h2>'+
+       '<span class="conta">a.s. '+esc(annoScolastico())+'</span></div><div class="corpo-pannello">';
+    h+='<p>'+esc(m.nota)+' Scrivi qui soltanto le ore assegnate a ciascuna classe e lascia vuote le altre: '+
+       'le ore svolte e quelle programmate si contano dalle attività registrate nella sezione '+esc(m.sezione)+'.</p>';
     if(elenco.length){
       elenco.forEach(function(c){
-        var d=(cf.classi&&cf.classi[c])||{};
-        h+='<div class="civica-conf"><span class="tag tag-classe">'+esc(c)+'</span>'+
-           '<input type="number" min="0" max="60" step="0.5" data-monte="'+esc(m.chiave)+'" data-monte-classe="'+esc(c)+'" value="'+esc(d.ore||"")+'" placeholder="ore" aria-label="Ore di '+esc(m.titolo)+' per '+esc(c)+'">'+
-           '<select data-monteper="'+esc(m.chiave)+'" data-monte-classe="'+esc(c)+'" aria-label="Periodo per '+esc(c)+'">'+
-           ['','1º quadrimestre','2º quadrimestre',"tutto l'anno"].map(function(o){
-             return '<option value="'+esc(o)+'"'+((d.periodo||"")===o?" selected":"")+'>'+esc(o||"periodo —")+'</option>';
-           }).join("")+'</select></div>';
+        var d=(cf.classi&&cf.classi[c])||{}, bm=bilancioMonte(c, m);
+        h+='<div class="monte-riga" data-monte-riga="'+esc(m.chiave)+'" data-classe="'+esc(c)+'">'+
+           '<button type="button" class="tag tag-classe vai-registro" data-registro-vai="'+esc(m.chiave)+'" data-classe="'+esc(c)+'" '+
+           'title="Le attività di '+esc(m.titolo.toLowerCase())+' della '+esc(c)+'">'+esc(c)+' ›</button>'+
+           '<label class="monte-assegnate"><input type="number" min="0" max="200" step="0.5" data-monte="'+esc(m.chiave)+'" data-monte-classe="'+esc(c)+'" value="'+esc(d.ore||"")+'" placeholder="—" aria-label="Ore assegnate di '+esc(m.titolo)+' per '+esc(c)+'"> h assegnate</label>'+
+           '<span class="monte-conto">'+
+           '<span class="mo-svolte" data-ore="'+bm.svolte+'">svolte <b>'+esc(oreTesto(bm.svolte))+'</b></span>'+
+           '<span class="mo-programmate" data-ore="'+bm.programmate+'">programmate <b>'+esc(oreTesto(bm.programmate))+'</b></span>'+
+           (bm.eccedenza
+             ? '<span class="mo-eccedenza" data-ore="'+bm.eccedenza+'">eccedenza <b>'+esc(oreTesto(bm.eccedenza))+'</b></span>'
+             : '<span class="mo-residue" data-ore="'+bm.residue+'">residue <b>'+esc(bm.previste?oreTesto(bm.residue):"—")+'</b></span>')+
+           '</span></div>';
       });
-      h+='<div class="campo"><label for="in-fine-'+esc(m.chiave)+'">Data entro cui completarle</label>'+
-         '<input id="in-fine-'+esc(m.chiave)+'" type="date" value="'+esc(cf.fine1q||"")+'"></div>';
-      h+='<div class="riga-input"><button class="btn btn-primary" type="button" data-cmd="salva-monte">Salva il monte ore</button>'+
+      h+='<div class="riga-input"><button class="btn btn-primary" type="button" data-cmd="salva-monte">Salva le ore assegnate</button>'+
          '<span class="aiuto" style="align-self:center">salva entrambi i riquadri</span></div>';
     }
     h+='</div></section>';
@@ -3257,8 +3282,11 @@ function aggiornaDatalist(){
   document.getElementById("lista-classi").innerHTML=elencoClassi().map(function(c){return '<option value="'+esc(c)+'">';}).join("");
   document.getElementById("lista-materie").innerHTML=stato.config.materie.map(function(m){return '<option value="'+esc(m)+'">';}).join("");
 }
-function cambiaVista(v){
+/* con una classe, la vista di una sezione del registro si apre con quella
+   classe in vista: è la strada da Monte ore alle attività */
+function cambiaVista(v, classe){
   stato.vista=v;
+  stato.registroClasse=classe||null;
   Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(t){
     t.setAttribute("aria-selected", t.dataset.vista===v ? "true":"false");
   });
@@ -3267,6 +3295,10 @@ function cambiaVista(v){
   });
   disegna();
   window.scrollTo({top:0, behavior:"instant"});
+  if(classe){
+    var g=document.querySelector('#v-'+v+' [data-registro-classe="'+(window.CSS&&CSS.escape?CSS.escape(classe):classe)+'"]');
+    if(g) g.scrollIntoView({block:"start", behavior:"instant"});
+  }
 }
 
 /* ============ finestra voce ============ */
@@ -3277,7 +3309,6 @@ function statiPerTipo(tipo, scelto){
     return '<option'+(s===scelto?" selected":"")+'>'+esc(s)+'</option>';
   }).join("");
   document.getElementById("riga-alunni").hidden = tipo!=="interrogazione";
-  document.getElementById("riga-durata").hidden = (tipo!=="civica" && tipo!=="approfondimento");
   /* gli incontri chimico-ambientali attraversano tutte e quattro le discipline,
      e una data di calendario non ha materia: il campo sparisce */
   document.getElementById("riga-materia").hidden = (tipo==="approfondimento" || tipo==="calendario");
@@ -3309,7 +3340,6 @@ function apriVoce(v){
   document.getElementById("f-data").value = v?(v.data||""):"";
   document.getElementById("f-ora").value = v?(v.ora||""):"";
   document.getElementById("f-quad").value = v?(v.periodo||""):"";
-  document.getElementById("f-durata").value = v&&v.durata?v.durata:1;
   document.getElementById("f-fonte").value = v?(v.fonte||""):"";
   document.getElementById("f-link").value = v?(v.link||""):"";
   document.getElementById("f-alunni").value = v?(v.alunni||""):"";
@@ -3464,7 +3494,7 @@ document.getElementById("form-voce").addEventListener("submit", function(ev){
   v.ora=document.getElementById("f-ora").value;
   v.stato=document.getElementById("f-stato").value;
   v.periodo=document.getElementById("f-quad").value;
-  v.durata = (v.tipo==="civica"||v.tipo==="approfondimento") ? (parseFloat(document.getElementById("f-durata").value)||1) : 0;
+  v.durata = 0;
   v.fonte=document.getElementById("f-fonte").value.trim();
   v.link=document.getElementById("f-link").value.trim();
   v.alunni=v.tipo==="interrogazione"?document.getElementById("f-alunni").value.trim():"";
@@ -6667,6 +6697,10 @@ function oreAttivita(v){
 function orarioTesto(v){
   return (v.inizio && v.fine) ? v.inizio + "–" + v.fine : "";
 }
+/* «31 h» non va a capo fra il numero e l'unità */
+function unitaUnite(html){
+  return html.replace(/(\d+(?:,\d+)?) h(?![a-z])/g, '<span class="nw">$1 h</span>');
+}
 function compresenzaDi(v){
   return Array.isArray(v.compresenza) ? v.compresenza.filter(Boolean) : [];
 }
@@ -6702,6 +6736,7 @@ function rigaAttivita(v){
   if(cp.length) h += '<div class="alunni"><b>In compresenza</b>' + esc(cp.join(", ")) + '</div>';
   if(v.dettagli) h += '<div class="dettagli">' + esc(v.dettagli) + '</div>';
   h += '</div><div class="azioni">';
+  if(!chiusa(v)) h += '<button class="btn btn-sm" data-azione="avanza" type="button">' + esc(prossimoStatoLabel(v)) + '</button>';
   h += '<button class="btn btn-sm btn-ghost" data-azione="modifica" type="button">Modifica</button>';
   h += '</div></div>';
   return h;
@@ -6718,15 +6753,21 @@ function disegnaRegistro(m){
     h += '<div class="vuoto"><h2>Nessuna attività registrata</h2>' +
          '<p>Registra la prima con il pulsante «Nuova attività», qui accanto.</p></div>';
   }
+  /* le classi con attività, e quelle con ore assegnate anche se non ne hanno
+     ancora: accanto al nome, lo stesso conto di Monte ore */
   var classi = [];
   tutte.forEach(function(v){ classiDi(v).forEach(function(c){ if(classi.indexOf(c) < 0) classi.push(c); }); });
+  classiMonte(m).forEach(function(c){ if(classi.indexOf(c) < 0 && bilancioMonte(c, m).previste) classi.push(c); });
   classi.sort().forEach(function(c){
     var voci = tutte.filter(function(v){ return haClasse(v, c); });
-    var ore = voci.filter(function(v){ return !annullata(v); })
-                  .reduce(function(s, v){ return s + oreAttivita(v); }, 0);
-    h += '<section class="gruppo" data-registro-classe="' + esc(c) + '"><div class="gruppo-testa"><h2>' + esc(c) + '</h2>' +
-         '<span class="conta">' + voci.length + ' attività · ' + esc(oreTesto(ore)) + '</span></div>' +
-         voci.map(rigaAttivita).join("") + '</section>';
+    var b = bilancioMonte(c, m);
+    h += '<section class="gruppo' + (stato.registroClasse === c ? ' in-vista' : '') + '" data-registro-classe="' + esc(c) + '">' +
+         '<div class="gruppo-testa"><h2>' + esc(c) + '</h2>' +
+         '<span class="conta bilancio" data-svolte="' + b.svolte + '" data-previste="' + b.previste + '" data-residue="' + b.residue +
+         '" data-eccedenza="' + b.eccedenza + '" data-programmate="' + b.programmate + '">' +
+         unitaUnite(esc(fraseBilancio(b)) + (b.programmate ? ' · programmate ' + esc(oreTesto(b.programmate)) : '')) + '</span></div>' +
+         (voci.length ? voci.map(rigaAttivita).join("")
+                      : '<div class="classe-vuota">Nessuna attività registrata per questa classe.</div>') + '</section>';
   });
   h += '</div><aside class="registro-comandi" aria-label="Comandi della sezione">' +
        '<button class="btn btn-primary" type="button" data-cmd="att-nuova" data-registro="' + esc(m.chiave) + '">+ Nuova attività</button>' +
@@ -6912,7 +6953,8 @@ document.getElementById("f-att-stato").addEventListener("change", function(){ th
    - ogni classe con almeno un'attività, in ordine alfabetico, con il
      suo titolo e una tabella in ordine di data: Data, Orario,
      Docenti in compresenza, Argomento, Note;
-   - in fondo a ogni tabella il totale delle ore, dagli orari.
+   - in fondo a ogni tabella le ore svolte, dagli orari, con le ore
+     assegnate in Monte ore e le residue (bilancioMonte, modello.js).
    Le attività annullate non sono svolte: non compaiono e non
    contano.
    ============================================================ */
@@ -7025,7 +7067,9 @@ function nomeDocente(){
          [stato.config.cognome || "", stato.config.nome || ""].join(" ").trim();
 }
 
-function tabellaClasse(voci){
+/* b è il bilancio della classe (modello.js, bilancioMonte): gli stessi numeri
+   di Monte ore e della sezione */
+function tabellaClasse(voci, b){
   var bordi = ["top", "left", "bottom", "right", "insideH", "insideV"].map(function(b){
     return '<w:' + b + ' w:val="single" w:sz="4" w:space="0" w:color="808080"/>';
   }).join("");
@@ -7036,17 +7080,24 @@ function tabellaClasse(voci){
   h += '<w:tr><w:trPr><w:tblHeader/></w:trPr>' + COLONNE_RESOCONTO.map(function(c){
     return wCella(c.w, c.titolo, {grassetto: true, sfondo: "E7E6E6"});
   }).join("") + '</w:tr>';
-  var ore = 0;
   voci.forEach(function(v){
-    ore += oreAttivita(v);
     var celle = [dataItaliana(v.data), orarioTesto(v) || "—", compresenzaDi(v).join(", ") || "—",
                  v.titolo || "", v.dettagli || ""];
     h += '<w:tr><w:trPr><w:cantSplit/></w:trPr>' + celle.map(function(t, i){ return wCella(COLONNE_RESOCONTO[i].w, t); }).join("") + '</w:tr>';
   });
+  /* in fondo: le svolte, le programmate se ce ne sono, le assegnate in Monte
+     ore e le residue, o l'eccedenza */
   var primi = tot - COLONNE_RESOCONTO[4].w;
-  h += '<w:tr>' + wCella(primi, "Totale ore svolte", {span: 4, grassetto: true, allinea: "right"}) +
-       wCella(COLONNE_RESOCONTO[4].w, oreInParole(ore), {grassetto: true}) + '</w:tr>';
-  return {xml: h + '</w:tbl>', ore: ore};
+  function riga(etichetta, valore, grassetto){
+    h += '<w:tr>' + wCella(primi, etichetta, {span: 4, grassetto: grassetto, allinea: "right"}) +
+         wCella(COLONNE_RESOCONTO[4].w, valore, {grassetto: grassetto}) + '</w:tr>';
+  }
+  riga("Totale ore svolte", oreInParole(b.svolte), true);
+  if(b.programmate) riga("Ore programmate, non ancora svolte", oreInParole(b.programmate), false);
+  riga("Ore assegnate", b.previste ? oreInParole(b.previste) : "non indicate", false);
+  if(b.eccedenza) riga("Ore in eccedenza", oreInParole(b.eccedenza), true);
+  else riga("Ore residue", b.previste ? oreInParole(b.residue) : "—", true);
+  return {xml: h + '</w:tbl>', ore: b.svolte};
 }
 
 /* il documento intero; null se nell'anno non c'è nessuna attività */
@@ -7058,7 +7109,7 @@ function documentoResoconto(m, anno){
               wPar("Docente: " + (nomeDocente() || "—"), {dopo: 240});
   classi.forEach(function(c){
     corpo += wPar("Classe " + c, {stile: "Titolo1"});
-    corpo += tabellaClasse(per[c]).xml;
+    corpo += tabellaClasse(per[c], bilancioMonte(c, m, anno)).xml;
     corpo += wPar("", {dopo: 120});
   });
   var W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
@@ -9073,31 +9124,21 @@ document.addEventListener("click", function(ev){
       if(vm && stato.config.materie.indexOf(vm)<0){ stato.config.materie.push(vm); salvaConfig(); }
       im.value="";
     }
-    else if(c==="aggiungi-monte"){
-      var ch=cmd.dataset.monteChiave, selA=document.getElementById("add-monte-"+ch);
-      if(selA && selA.value){
-        var conf=stato.config[ch]||{fine1q:"",classi:{}};
-        conf.classi=conf.classi||{};
-        conf.classi[selA.value]={ore:0, periodo:"tutto l'anno"};
-        stato.config[ch]=conf;
-        salvaConfig();
-      }
-    }
     else if(c==="salva-monte"){
-      /* si salvano TUTTE le categorie presenti a schermo: il salvataggio
-         ridisegna la pagina, e salvarne una sola cancellerebbe quello che
-         è stato scritto nell'altra */
+      /* si salvano le ore assegnate di TUTTE le categorie a schermo: il
+         salvataggio ridisegna la pagina, e salvarne una sola cancellerebbe
+         quello che è stato scritto nell'altra. Quello che la configurazione
+         teneva già per ogni classe resta com'era. */
       MONTEORE.forEach(function(m){
         var campi=document.querySelectorAll('[data-monte="'+m.chiave+'"]');
         if(!campi.length) return;
-        var mappa={};
+        var vecchia=stato.config[m.chiave]||{};
+        var classi=Object.assign({}, vecchia.classi||{});
         Array.prototype.forEach.call(campi, function(inp){
           var cl=inp.dataset.monteClasse;
-          var sel=document.querySelector('[data-monteper="'+m.chiave+'"][data-monte-classe="'+cl+'"]');
-          mappa[cl]={ore:parseFloat(inp.value)||0, periodo:sel?sel.value:""};
+          classi[cl]=Object.assign({}, classi[cl]||{}, {ore:parseFloat(inp.value)||0});
         });
-        var f=document.getElementById("in-fine-"+m.chiave);
-        stato.config[m.chiave]={fine1q:f?f.value:"", classi:mappa};
+        stato.config[m.chiave]=Object.assign({}, vecchia, {classi:classi});
       });
       salvaConfig();
     }
@@ -9133,7 +9174,7 @@ document.addEventListener("click", function(ev){
     return;
   }
   var pan=ev.target.closest("[data-pannello]");
-  if(pan && !ev.target.closest("button[data-filtro],button[data-vai],button[data-nuova-tipo]")){
+  if(pan && !ev.target.closest("button[data-filtro],button[data-vai],button[data-nuova-tipo],button[data-registro-vai]")){
     var chiavi=pannelliChiusi(), k=pan.dataset.pannello;
     if(chiavi[k]) delete chiavi[k]; else chiavi[k]=1;
     try{ localStorage.setItem("agenda-pannelli", JSON.stringify(chiavi)); }catch(e){}
@@ -9146,6 +9187,8 @@ document.addEventListener("click", function(ev){
     cambiaVista("elenco");
     return;
   }
+  var reg=ev.target.closest("[data-registro-vai]");
+  if(reg){ cambiaVista(reg.dataset.registroVai, reg.dataset.classe); return; }
   var vai=ev.target.closest("[data-vai]");
   if(vai){
     if(vai.dataset.vai==="impostazioni-ore"){ stato.sezImp="ore"; cambiaVista("impostazioni"); }
