@@ -4135,7 +4135,9 @@ var TIMBRO_MODELLI = {
            {g: "fffff8000fffff8884000fffff0000000fff00fff8000ffffffff8000ffffffff8000ffffffff8000ffffffff8000ffffffff8000ffffffff8000ffffffff8000ffffffff8000ffffffff8000ffffffff8000ffffffff8000fffff0000000000", r: 0.56}],
   "2": [{g: "ff0000000fffff0000000fff00000000000f00ffffff0000fffffffff000fffffffff000fffffffff000ffffffff0000ffffffff000fffffff000ffffffff000fffffffff000fffffff000ffffffff000fffffff000000000000000000000000", r: 0.615},
            {g: "ff0000000fff88088888088f000fffff000f00fffffff000fffffffff000fffffffff000fffffffff000ffffffff088fffffff888fffffffff00fffffffff0fffffffff00ffffff0ff888ffffff0ff0ffffffff0000000000000000000000000", r: 0.64}],
-  "4": [{g: "ffffff0000ffffffff0000ffffffff0000fffffff0ff00ffffff00ff00ffffff0fff00ffffff0fff00fffff0ffff00ffff00ffff00ffff0fffff00ff000000000000000000000000000000000000ffffffff00ffffffffff00ffffffffff00ff", r: 0.769}],
+  /* la seconda forma, graziata, viene dalla convocazione del GLO di ottobre 2026 */
+  "4": [{g: "ffffff0000ffffffff0000ffffffff0000fffffff0ff00ffffff00ff00ffffff0fff00ffffff0fff00fffff0ffff00ffff00ffff00ffff0fffff00ff000000000000000000000000000000000000ffffffff00ffffffffff00ffffffffff00ff", r: 0.769},
+           {g: "ffffff008ffffffff8008ffffffff0008ffffffff0008fffffff0f008fffff800f008fffff808f008ffffc88ff008ffff88fff008fff008fff008fff000000000000888888004888ffffff008fffffffff008fffffffff008fffffff0000000f", r: 0.769}],
   "5": [{g: "ff000000000fff000000000fff000000000fff000fffffffff000fffffffff0000000fffff0000000fffff000000000fff0fffff0000fffffffff000fffffffff000fffffffff000fffffffff00000ffffff000000000000000fff0000000fff", r: 0.615}],
   "6": [{g: "ffff000000ffffff000000fffff00000000fff0000ffff0f0000ffffffff000fffffffff000fffffffff000f000000ff00000000000f0000ffff0000000fffffff00000fffffff00000fffffff00ff00ffff0000ff000000000ffff0000000ff", r: 0.692},
            {g: "ffff000008fffff88888048ffff0ffff000ff800fffff80f000fffffffff000f88888cff000f000008ff0008ffff8408000ffffff800000ffffff800000ffffff800000ffffff800840ffffff800f80ffffff800f800ffff000ffff0000008ff", r: 0.72}],
@@ -4552,6 +4554,22 @@ function senzaAccenti(s){
     .replace(/[òó]/g, "o").replace(/[ùú]/g, "u");
 }
 
+/* Alcuni PDF restituiscono le parole spezzate a lettere o a sillabe:
+   «modal ità t ele ma tic a». Le parole chiave si confrontano allora con una
+   tolleranza per gli spazi interni: fra una lettera e l'altra può stare uno
+   spazio, fra una parola e l'altra anche nessuno. Il testo resta com'è: la
+   tolleranza sta soltanto nella forma con cui lo si interroga.
+   Restituisce il sorgente di un'espressione da comporre con le altre. */
+var VOCALI_ACCENTATE = {a: "[aàá]", e: "[eèé]", i: "[iìí]", o: "[oòó]", u: "[uùú]"};
+function spezzata(frase){
+  return String(frase).toLowerCase().split(/\s+/).map(function(parola){
+    return parola.split("").map(function(c){
+      return VOCALI_ACCENTATE[c] || c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }).join(" ?");
+  }).join("\\s*");
+}
+var RE_CONVOCATO = new RegExp("(?:^|[\\s,;(])(?:è|e'|sono|sarà|saranno)\\s+" + spezzata("convocat"), "i");
+
 function dueCifre(n){ return String(n).length < 2 ? "0" + n : String(n); }
 function isoData(a, m, g){ return a + "-" + dueCifre(m) + "-" + dueCifre(g); }
 
@@ -4755,7 +4773,9 @@ function trovaOrari(riga){
     esito.push({ora: dueCifre(hh) + ":" + dueCifre(mi), da: da, a: a, fine: !!fine});
   }
 
-  re = /\bdalle\s+(?:ore\s+)?(\d{1,2})[:.](\d{2})\s+alle\s+(?:ore\s+)?(\d{1,2})[:.](\d{2})\b/gi;
+  /* alcuni documenti scrivono anche i secondi, «16:00:00» o «16.00.00»: si
+     leggono e si lasciano cadere, perché la convocazione si scrive 16:00 */
+  re = /\bdalle\s+(?:ore\s+)?(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s+alle\s+(?:ore\s+)?(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?(?![:.]?\d)/gi;
   while((m = re.exec(t))){
     presi.push([m.index, m.index + m[0].length]);
     esito.push({ora: dueCifre(Number(m[1])) + ":" + dueCifre(Number(m[2])), da: m.index, a: m.index + m[0].length, fine: false});
@@ -4765,7 +4785,7 @@ function trovaOrari(riga){
   /* l'intervallo delle tabelle: «14.30 – 16.30», «ore 9:00-11:00». La
      normalizzazione ha già ridotto lineetta e trattino breve al trattino
      semplice, ma la forma li nomina tutti e tre per chiarezza. */
-  re = /(?:\bore\s+)?\b(\d{1,2})[:.](\d{2})\s*[-–—]\s*(\d{1,2})[:.](\d{2})(?!\d)/gi;
+  re = /(?:\bore\s+)?\b(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s*[-–—]\s*(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?(?![:.]?\d)/gi;
   while((m = re.exec(t))){
     var h1 = Number(m[1]), m1 = Number(m[2]), h2 = Number(m[3]), m2 = Number(m[4]);
     if(h1 > 23 || m1 > 59 || h2 > 23 || m2 > 59) continue;
@@ -4775,7 +4795,12 @@ function trovaOrari(riga){
     esito.push({ora: dueCifre(h2) + ":" + dueCifre(m2), da: m.index, a: m.index + m[0].length, fine: true});
   }
 
-  re = /\bore\s+(\d{1,2})[:.](\d{2})\b/gi;
+  re = /\bore\s+(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?(?![:.]?\d)/gi;
+  while((m = re.exec(t))) aggiungi(Number(m[1]), Number(m[2]), m.index, m.index + m[0].length);
+
+  /* con i secondi a zero l'orario si riconosce anche da solo, «alle 16:00:00»:
+     nessuna data e nessun numero si scrive così */
+  re = /(?:\balle\s+)?\b(\d{1,2})[:.](\d{2})[:.]00(?![:.]?\d)/gi;
   while((m = re.exec(t))) aggiungi(Number(m[1]), Number(m[2]), m.index, m.index + m[0].length);
 
   re = /\balle\s+ore\s+(\d{1,2})(?![:.\d])/gi;
@@ -4859,9 +4884,21 @@ function trovaOggetto(righe){
 }
 
 /* ---------- organo convocato ---------- */
+/* I gruppi per l'inclusione si nominano quasi sempre con la sigla: GLO, il
+   Gruppo di Lavoro Operativo che redige il PEI di un alunno, e GLI, il Gruppo
+   di Lavoro per l'Inclusione dell'istituto. La sigla vale soltanto in
+   maiuscolo, e «GLI» non vale dentro una frase tutta in maiuscolo, dove è
+   l'articolo: «A TUTTI GLI ALUNNI». */
+var RE_GLO = /\bGLO\b|[Gg]ruppo\s+[Dd]i\s+[Ll]avoro\s+[Oo]perativo/;
+var RE_GLI = /(?<![A-ZÀ-Ý]{2,}\s+)\bGLI\b(?!\s+[A-ZÀ-Ý]{2,})|[Gg]ruppo\s+[Dd]i\s+[Ll]avoro\s+[Pp]er\s+[Ll]'\s*[Ii]nclusione/;
+/* la fase del GLO, quando l'oggetto o il testo la dicono */
+var RE_FASE_GLO = /\bGLO\s+(?:di\s+(?:verifica\s+)?)?(iniziale|intermedi[oa]|finale)\b/i;
+
 var ORGANI = [
   {chiave: "consiglio-istituto", nome: "Consiglio di Istituto", re: /consiglio\s+(?:di|d')\s*istituto/i},
   {chiave: "collegio", nome: "Collegio dei Docenti", re: /collegio\s+(?:dei\s+)?docenti/i},
+  {chiave: "glo", nome: "GLO (Gruppo di Lavoro Operativo per l'inclusione)", re: RE_GLO},
+  {chiave: "gli", nome: "GLI (Gruppo di Lavoro per l'Inclusione)", re: RE_GLI},
   {chiave: "consiglio-classe", nome: "Consiglio di classe", re: /consigli[oi]?\s+di\s+classe/i},
   {chiave: "dipartimenti", nome: "Dipartimenti", re: /dipartiment[oi]/i}
 ];
@@ -4881,7 +4918,7 @@ function trovaOrgano(righe, oggetto){
   var i;
   for(i = 0; i < righe.length; i++){
     var t = normalizzaTesto(righe[i]);
-    if(/(?:^|[\s,;(])(?:è|e'|sono|sarà|saranno)\s+convocat/i.test(t)){
+    if(RE_CONVOCATO.test(t)){
       o = organoIn(t);
       if(o) return o;
     }
@@ -4905,15 +4942,32 @@ var DESTINATARI = [
 /* Anche i destinatari si cercano in tutto il documento: il blocco comincia
    alla prima riga che ne nomina uno, dovunque stia, e si legge per trenta
    righe da lì, come prima si leggeva dalla testa del foglio. */
-function trovaDestinatari(righe){
+/* «Al Consiglio di classe della 5A» riguarda il docente soltanto se la classe
+   è sua: allora la classe passa alla voce. Un consiglio di un'altra classe
+   resta fra i destinatari, ma non riguarda il docente. */
+function consiglioDestinatario(riga, classi){
+  var m = normalizzaTesto(riga).match(/^\s*(?:al|ai)\s+consigli[oi]?\s+di\s+classe\b(.*)$/i);
+  if(!m) return null;
+  var sue = classiDaRiga(m[1], classi || []).classi;
+  return {nome: sue.length ? "Al Consiglio di classe della " + elencoLeggibile(sue) : riga.trim(),
+          docenti: sue.length > 0, classi: sue};
+}
+
+function trovaDestinatari(righe, classi){
   var esito = [], i, j, primo = -1;
   for(i = 0; i < righe.length && primo < 0; i++){
     var r = normalizzaTesto(righe[i]);
+    if(consiglioDestinatario(r, classi)){ primo = i; break; }
     for(j = 0; j < DESTINATARI.length; j++) if(DESTINATARI[j].re.test(r)){ primo = i; break; }
   }
   if(primo < 0) return esito;
   for(i = primo; i < Math.min(primo + 30, righe.length); i++){
     var t = normalizzaTesto(righe[i]);
+    var cons = consiglioDestinatario(righe[i], classi);
+    if(cons){
+      if(!esito.some(function(d){ return d.nome === cons.nome; })) esito.push(cons);
+      continue;
+    }
     for(j = 0; j < DESTINATARI.length; j++){
       if(DESTINATARI[j].re.test(t) && esito.indexOf(DESTINATARI[j]) < 0) esito.push(DESTINATARI[j]);
     }
@@ -4922,15 +4976,27 @@ function trovaDestinatari(righe){
 }
 
 /* ---------- modalità e luogo della seduta ---------- */
+/* le formule della modalità, con la tolleranza per le parole spezzate */
+var INIZIO_PAROLA = "(?:^|[^a-zà-ú])";
+var FINE_PAROLA = "(?![a-zà-ú])";
+var RE_MOD_MISTA = new RegExp(INIZIO_PAROLA + "(?:" + spezzata("modalita mista") + "|" +
+                              spezzata("in presenza e a distanza") + ")" + FINE_PAROLA, "i");
+var RE_MOD_DISTANZA = new RegExp(INIZIO_PAROLA + "(?:" + spezzata("a distanza") + "|" + spezzata("modalita telematica") + "|" +
+                                 spezzata("da remoto") + ")" + FINE_PAROLA, "i");
+var RE_MOD_PRESENZA = new RegExp(INIZIO_PAROLA + spezzata("in presenza") + FINE_PAROLA, "i");
+/* «in presenza di docente abilitato» non è una modalità */
+var RE_MOD_PRESENZA_SOLA = new RegExp(INIZIO_PAROLA + spezzata("in presenza") + FINE_PAROLA +
+                                      "(?!\\s+(?:di|del|dello|della|dei|degli|delle|dell'|d')\\b)", "i");
+
 function trovaModalita(righe){
   var i, esito = {modalita: "", luogo: ""};
   for(i = 0; i < righe.length; i++){
     var t = normalizzaTesto(righe[i]);
-    if(!/(?:^|[\s,;(])(?:è|e'|sono|sarà|saranno)\s+convocat/i.test(t)) continue;
+    if(!RE_CONVOCATO.test(t)) continue;
     var finestra = t + " " + normalizzaTesto(righe[i + 1] || "");
-    if(/in\s+modalit[aà]\s+mista|in\s+presenza\s+e\s+a\s+distanza/i.test(finestra)) esito.modalita = "mista";
-    else if(/a\s+distanza|in\s+modalit[aà]\s+telematica|da\s+remoto/i.test(finestra)) esito.modalita = "distanza";
-    else if(/in\s+presenza/i.test(finestra)) esito.modalita = "presenza";
+    if(RE_MOD_MISTA.test(finestra)) esito.modalita = "mista";
+    else if(RE_MOD_DISTANZA.test(finestra)) esito.modalita = "distanza";
+    else if(RE_MOD_PRESENZA.test(finestra)) esito.modalita = "presenza";
     var l = finestra.match(/presso\s+([^,;.]{3,90})/i);
     if(l){
       esito.luogo = l[1]
@@ -4954,13 +5020,30 @@ function trovaModalita(righe){
 function modalitaNelTesto(righe, odg){
   var testo = righe.filter(function(r, k){ return !(odg && odg.da >= 0 && k >= odg.da && k <= odg.a); })
                    .map(normalizzaTesto).join(" ").replace(/\s+/g, " ");
-  if(/modalit[aà]\s+mista/i.test(testo)) return "mista";
-  var distanza = /modalit[aà]\s+telematica|\ba\s+distanza\b|\bda\s+remoto\b/i.test(testo);
-  var presenza = /\bin\s+presenza\b(?!\s+(?:di|del|dello|della|dei|degli|delle|dell'|d')\b)/i.test(testo);
+  if(RE_MOD_MISTA.test(testo)) return "mista";
+  var distanza = RE_MOD_DISTANZA.test(testo);
+  var presenza = RE_MOD_PRESENZA_SOLA.test(testo);
   if(distanza && presenza) return "mista";
   if(distanza) return "distanza";
   if(presenza) return "presenza";
   return "";
+}
+
+/* ---------- il link della riunione ---------- */
+/* Le stanze di Meet, Teams e Zoom scritte nel documento, con o senza
+   «https://». Il punto o la parentesi che chiudono la frase non fanno parte
+   del link. Restituisce i link distinti, nell'ordine in cui compaiono. */
+var RE_LINK_RIUNIONE = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)*(?:meet\.google\.com|teams\.microsoft\.com|teams\.live\.com|zoom\.us)\/[^\s<>"'«»]+/gi;
+function trovaLinkRiunione(testo){
+  var esito = [];
+  (String(testo || "").match(RE_LINK_RIUNIONE) || []).forEach(function(l){
+    l = l.replace(/[.,;:!?]+$/, "");
+    while(/\)$/.test(l) && (l.match(/\(/g) || []).length < (l.match(/\)/g) || []).length) l = l.slice(0, -1);
+    l = l.replace(/[.,;:!?]+$/, "");
+    if(!/^https?:\/\//i.test(l)) l = "https://" + l;
+    if(esito.indexOf(l) < 0) esito.push(l);
+  });
+  return esito;
 }
 
 /* ---------- ordine del giorno ---------- */
@@ -4968,11 +5051,13 @@ function modalitaNelTesto(righe, odg){
    preceduto da quell'annuncio, come i requisiti di un avviso di selezione, non
    è un ordine del giorno e non va scambiato per tale.
    I punti sono riportati nella formulazione esatta del documento. */
+var RE_ODG = new RegExp(spezzata("ordine del giorno"));
+var RE_SEGUENTE = new RegExp(spezzata("seguent") + " ?[ei]");
 function trovaOdg(righe){
   var i, inizio = -1;
   for(i = 0; i < righe.length; i++){
     var t = senzaAccenti(righe[i]);
-    if(t.indexOf("ordine del giorno") >= 0 && /seguent[ei]/.test(t)){ inizio = i + 1; break; }
+    if(RE_ODG.test(t) && RE_SEGUENTE.test(t)){ inizio = i + 1; break; }
     if(/o\.?\s?d\.?\s?g\.?/.test(t) && /seguent[ei]\s+punti/.test(t)){ inizio = i + 1; break; }
   }
   /* L'annuncio può anche non dire «seguente»: «si comunica il calendario e
@@ -4982,7 +5067,7 @@ function trovaOdg(righe){
   if(inizio < 0){
     for(i = 0; i < righe.length && inizio < 0; i++){
       var ann = senzaAccenti(righe[i]);
-      if(ann.indexOf("ordine del giorno") < 0 && !/(?:^|[^a-z])o\.\s?d\.\s?g\./.test(ann)) continue;
+      if(!RE_ODG.test(ann) && !/(?:^|[^a-z])o\.\s?d\.\s?g\./.test(ann)) continue;
       var j, piene = 0;
       for(j = i + 1; j < righe.length && piene < 3; j++){
         if(!righe[j].trim()) continue;
@@ -5036,6 +5121,22 @@ function trovaOdg(righe){
 function corsoDi(classe){ return String(classe).replace(/^\d+/, "").toUpperCase(); }
 function livelloDi(classe){ var m = String(classe).match(/^(\d+)/); return m ? Number(m[1]) : 0; }
 
+/* La classe si scrive in molti modi: 3B, 3°B, 3^ B, 3ª B, 3 B, 3-B. Fra il
+   numero e la sezione possono stare un segno di grado, un accento
+   circonflesso, una «ª», spazi o un trattino; la sezione, in queste forme, va
+   scritta in maiuscolo, perché «3 b» è quasi sempre una frase. Un elenco di
+   sezioni dopo il livello, «3° B-C-D», non è una classe sola: lo legge la
+   regola dei livelli. */
+function classeNelTesto(c, testo){
+  var t = normalizzaTesto(testo);
+  var esatta = new RegExp("(^|[^A-Za-z0-9])" + String(c).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^A-Za-z0-9]|$)", "i");
+  if(esatta.test(t)) return true;
+  var m = String(c).toUpperCase().replace(/[^0-9A-Z]/g, "").match(/^(\d+)([A-Z]+)$/);
+  if(!m) return false;
+  return new RegExp("(^|[^A-Za-z0-9])" + m[1] + "(?:\\s*[°º^ª]\\s*|\\s*-\\s*|\\s+)" + m[2] +
+                    "(?![A-Za-z0-9])(?!\\s*[-,]\\s*[A-Z]{1,4}(?![A-Za-z]))").test(t);
+}
+
 function classiDaRiga(riga, classi){
   var t = normalizzaTesto(riga);
   var trovate = [], modo = "";
@@ -5044,8 +5145,7 @@ function classiDaRiga(riga, classi){
         una classe breve non va riconosciuta dentro una più lunga che comincia
         allo stesso modo */
   classi.forEach(function(c){
-    var re = new RegExp("(^|[^A-Za-z0-9])" + c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^A-Za-z0-9]|$)", "i");
-    if(re.test(t) && trovate.indexOf(c) < 0){ trovate.push(c); modo = "nome"; }
+    if(classeNelTesto(c, t) && trovate.indexOf(c) < 0){ trovate.push(c); modo = "nome"; }
   });
   if(trovate.length) return {classi: trovate, modo: modo, livelli: []};
 
@@ -5093,6 +5193,8 @@ var CANONICO = {
   "collegio": "Collegio dei docenti",
   "dipartimenti": "Riunione di dipartimento",
   "consiglio-classe": "Consiglio di classe",
+  "glo": "GLO",
+  "gli": "GLI",
   "ricevimento": "Ricevimento collegiale dei genitori",
   "scrutinio": "Scrutinio",
   "scrutini-finali": "Scrutini finali",
@@ -5120,6 +5222,8 @@ var CHIAVE_CATEGORIA = {
   "collegio": /collegio/i,
   "dipartimenti": /dipartiment/i,
   "consiglio-classe": /consigli[oi]?\s+di\s+classe/i,
+  "glo": RE_GLO,
+  "gli": RE_GLI,
   "ricevimento": /ricevimento/i,
   "scrutinio": /scrutin/i,
   "scrutini-finali": /scrutin/i,
@@ -5170,7 +5274,7 @@ function trovaCorso(righe, oggetto){
 }
 
 /* le categorie che portano con sé le classi del docente */
-var CON_CLASSI = {"consiglio-classe": 1, "ricevimento": 1, "scrutinio": 1};
+var CON_CLASSI = {"consiglio-classe": 1, "glo": 1, "ricevimento": 1, "scrutinio": 1};
 /* le categorie che valgono come indicazione di calendario d'istituto */
 var DI_CALENDARIO = {
   "inizio-lezioni": 1, "fine-lezioni": 1, "sospensione": 1, "festivita": 1,
@@ -5202,6 +5306,8 @@ function categoriaDa(descrizione, sezione, intestazione){
     [/esami\s+di\s+stato|prima\s+prova|seconda\s+prova/i, "esame"],
     [/consiglio\s+(?:di|d')\s*istituto/i, "consiglio-istituto"],
     [/collegio/i, "collegio"],
+    [RE_GLO, "glo"],
+    [RE_GLI, "gli"],
     [/dipartiment/i, "dipartimenti"],
     [/consigli[oi]?\s+di\s+classe/i, "consiglio-classe"],
     [/ricevimento/i, "ricevimento"],
@@ -5256,6 +5362,13 @@ function descrizioneRiga(riga, date, orari){
     if(visti[k]) return;
     visti[k] = true;
     pezzi.push([x.da, x.a]);
+  });
+  /* la data in cifre si annuncia spesso con «giorno» o «in data», che senza
+     la data non dicono niente: «giorno 19/10/2026» vale «lunedì 19 ottobre» */
+  date.forEach(function(x){
+    if(!/^\d/.test(x.testo || "")) return;
+    var prima = /(^|\s)((?:il\s+)?giorno|in\s+data)\s*$/i.exec(t.slice(0, x.da));
+    if(prima) pezzi.push([prima.index + prima[1].length, x.da]);
   });
   pezzi.sort(function(a, b){ return b[0] - a[0]; });
   pezzi.forEach(function(p){ t = t.slice(0, p[0]) + " " + t.slice(p[1]); });
@@ -5329,6 +5442,20 @@ function titoloVoce(categoria, descrizione, classi, canonicoObbligato){
   return base || "Impegno";
 }
 
+/* Il GLO prende il nome della sua fase, quando il documento la dice, e la
+   classe dell'alunno: «GLO iniziale — 5A». La fase si cerca prima
+   nell'oggetto, poi nel testo. */
+function faseDelGlo(oggetto, testo){
+  var m = RE_FASE_GLO.exec(normalizzaTesto(oggetto || "")) || RE_FASE_GLO.exec(normalizzaTesto(testo || ""));
+  if(!m) return "";
+  var f = m[1].toLowerCase();
+  return f === "intermedia" ? "intermedio" : f;
+}
+function titoloGlo(fase, classi){
+  var cl = elencoLeggibile(classi);
+  return "GLO" + (fase ? " " + fase : "") + (cl ? " — " + cl : "");
+}
+
 /* le preposizioni rimaste appese dopo aver tolto la data non dicono niente */
 function ripulisciCoda(s){
   var prima;
@@ -5363,9 +5490,29 @@ function leggiARegole(testo, opzioni){
   var oggetto = trovaOggetto(righe);
   var organo = trovaOrgano(righe, oggetto);
   var corso = trovaCorso(righe, oggetto);
-  var destinatari = trovaDestinatari(righe);
+  var destinatari = trovaDestinatari(righe, classi);
+  /* la classe del documento: quella del consiglio fra i destinatari, oppure
+     quella scritta nell'oggetto. Vale per le sedute che non ne nominano una
+     sulla propria riga. Un consiglio di un'altra classe fra i destinatari
+     dice che il documento riguarda quella classe, non tutte. */
+  var consigliDest = destinatari.filter(function(d){ return d.classi; });
+  var classiDoc = [];
+  consigliDest.forEach(function(d){ d.classi.forEach(function(c){ if(classiDoc.indexOf(c) < 0) classiDoc.push(c); }); });
+  if(!consigliDest.length && oggetto){
+    var dallOggetto = classiDaRiga(oggetto, classi);
+    if(dallOggetto.modo === "nome") classiDoc = dallOggetto.classi;
+  }
   var modalita = trovaModalita(righe);
   var odg = trovaOdg(righe);
+  /* un documento che nomina il GLO non convoca mai un dipartimento, anche
+     quando fra i destinatari c'è il dipartimento di sostegno */
+  var nominaGlo = RE_GLO.test(normalizzaTesto(testo));
+  var faseGlo = faseDelGlo(oggetto, testo);
+  /* la convocazione del GLO o del GLI non dice «è convocato»: invita a
+     partecipare, e la modalità si legge in tutto il testo */
+  var perInclusione = !!(organo && (organo.chiave === "glo" || organo.chiave === "gli"));
+  var linkRiunione = trovaLinkRiunione(testo);
+  if(perInclusione && !modalita.modalita) modalita.modalita = modalitaNelTesto(righe, odg);
 
   /* la data del protocollo, per distinguere quello che deve ancora venire;
      senza protocollo, il giorno della lettura */
@@ -5414,6 +5561,8 @@ function leggiARegole(testo, opzioni){
          ["scrutinio", /scrutini?\b/i],
          ["elezioni", /elezioni/i],
          ["collegio", /collegio\s+(?:dei\s+)?docenti/i],
+         ["glo", RE_GLO],
+         ["gli", RE_GLI],
          ["dipartimenti", /dipartiment/i]].forEach(function(par){
           if(par[1].test(normalizzaTesto(corta))){ quante++; quale = par[0]; }
         });
@@ -5592,6 +5741,7 @@ function leggiARegole(testo, opzioni){
     if(elencate && organo && organo.chiave === "consiglio-classe" && (cat.categoria === "altro" || cat.da !== "riga"))
       cat = {categoria: "consiglio-classe", da: "riga"};
 
+    if(nominaGlo && cat.categoria === "dipartimenti") cat = {categoria: "glo", da: cat.da};
     var categoria = cat.categoria;
     /* le classi stanno di solito sulla riga della data; quando il giorno ha
        una riga sua, stanno su quella dell'orario, che la seduta ha preso con sé */
@@ -5600,6 +5750,14 @@ function leggiARegole(testo, opzioni){
     /* una riga del calendario che elenca soltanto classi altrui riguarda
        quelle classi, non tutte */
     if(!perClassi.modo && elencate) perClassi = {classi: [], modo: "elenco", livelli: []};
+    if(!perClassi.modo && CON_CLASSI[categoria]){
+      /* il GLO nomina la classe dell'alunno nella frase che lo convoca, di
+         solito sulla riga prima della data */
+      var vicina = categoria === "glo" ? classiDaRiga(ev.finestra || "", classi) : {modo: ""};
+      if(vicina.modo === "nome") perClassi = vicina;
+      else if(classiDoc.length) perClassi = {classi: classiDoc.slice(), modo: "documento", livelli: []};
+      else if(consigliDest.length) perClassi = {classi: [], modo: "documento", livelli: []};
+    }
     perClassi.classi = ordinaClassi(perClassi.classi, classi);
 
     /* di sabato e di domenica non c'e' scuola: una sospensione che comincia in
@@ -5617,7 +5775,8 @@ function leggiARegole(testo, opzioni){
       data = d2;
     }
 
-    var titolo = titoloVoce(categoria, descr, perClassi.classi, eLaSeduta);
+    var titolo = categoria === "glo" ? titoloGlo(faseGlo, perClassi.classi)
+                                     : titoloVoce(categoria, descr, perClassi.classi, eLaSeduta);
     if(categoria === "scadenza"){
       var che = oggetto || intestazioneUtile(ev.intestazione) || descr;
       titolo = "Scadenza — " + accorcia(ripulisciCoda(che), 60);
@@ -5660,7 +5819,8 @@ function leggiARegole(testo, opzioni){
     var liv = esclusivi[c.categoria + "|" + c.sezione + "|" + c.mese];
     if(!liv || !liv.length) return;
     c.classi = c.classi.filter(function(cl){ return liv.indexOf(livelloDi(cl)) < 0; });
-    c.titolo = titoloVoce(c.categoria, c.descrizione, c.classi, c.seduta);
+    c.titolo = c.categoria === "glo" ? titoloGlo(faseGlo, c.classi)
+                                     : titoloVoce(c.categoria, c.descrizione, c.classi, c.seduta);
   });
 
   /* ---------- che cosa diventa voce ---------- */
@@ -5697,7 +5857,8 @@ function leggiARegole(testo, opzioni){
 
   candidate.forEach(function(c){
     var organoQui = c.categoria === "consiglio-istituto" || c.categoria === "collegio" ||
-                    c.categoria === "dipartimenti" || c.categoria === "consiglio-classe";
+                    c.categoria === "dipartimenti" || c.categoria === "consiglio-classe" ||
+                    c.categoria === "glo" || c.categoria === "gli";
     var calendario = DI_CALENDARIO[c.categoria] === 1;
     var adempimento = c.categoria === "scadenza" || c.adempimento;
     /* una riga che porta insieme una data e un orario è un appuntamento, e
@@ -5804,7 +5965,8 @@ function leggiARegole(testo, opzioni){
     var d = [];
     if(v.oraLetta) d.push("Ore " + v.oraLetta + (v.oraFine ? "-" + v.oraFine : "") + ".");
     var righeVoce = v.righe.map(function(n){ return (righe[n] || "").trim(); }).filter(Boolean);
-    if(v.categoria === "consiglio-istituto" || v.categoria === "collegio" || v.categoria === "dipartimenti" || perConsigli(v)){
+    if(v.categoria === "consiglio-istituto" || v.categoria === "collegio" || v.categoria === "dipartimenti" ||
+       v.categoria === "glo" || v.categoria === "gli" || perConsigli(v)){
       var luogo = [];
       var mod = perConsigli(v) ? modalitaConsigli : modalita.modalita;
       if(mod === "presenza") luogo.push("Seduta in presenza");
@@ -5813,6 +5975,10 @@ function leggiARegole(testo, opzioni){
       if(modalita.luogo) luogo.push("presso " + modalita.luogo);
       if(luogo.length) d.push(luogo.join(", ") + ".");
     }
+    /* il link della riunione accompagna gli impegni, non le date di
+       calendario, le comunicazioni o le scadenze */
+    if(linkRiunione.length && v.tipo === "impegno" && v.categoria !== "comunicazione" && v.categoria !== "scadenza")
+      d.push("Link della riunione: " + linkRiunione.join(" "));
     if(v.categoria === "comunicazione"){
       /* i PDF lasciano a volte in testa alla riga un carattere invisibile che
          trim() non toglie */
@@ -5883,9 +6049,37 @@ function leggiARegole(testo, opzioni){
       protMese: pd ? pd[2] : "",
       protAnno: pd ? pd[3].slice(2) : "",
       modalita: modalitaConsigli || "presenza",
-      meet: String(config.meet || ""),
+      /* la stanza scritta nel documento vince su quella fissa delle Impostazioni */
+      meet: linkRiunione[0] || String(config.meet || ""),
       rappresentanti: rappresentantiPer(regoleRappresentanti, classeSeduta),
       odg: odg.punti.map(function(x){ return {testo: x.testo, sotto: (x.sotto || []).slice()}; })
+    };
+  });
+
+  /* anche la seduta del GLO e del GLI porta con sé la sua convocazione: la
+     data, l'ora, la modalità, la stanza e il protocollo del documento, che
+     così resta legato alla voce. Non c'è un verbale da precompilare. */
+  voci.forEach(function(v){
+    if(v.categoria !== "glo" && v.categoria !== "gli") return;
+    var p = v.data.split("-");
+    var oraSeduta = (v.oraLetta || "").split(":");
+    var pd = String(prot.data || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    v.convocazione = {
+      organo: v.categoria,
+      classe: v.classe || "",
+      fase: v.categoria === "glo" ? faseGlo : "",
+      annoScolastico: annoScolasticoDi(v.data),
+      giorno: String(Number(p[2])),
+      mese: MESI_NOME[Number(p[1]) - 1],
+      anno: ANNI_LETTERE[Number(p[0])] || String(p[0]),
+      ora: oraSeduta[0] ? String(Number(oraSeduta[0])) : "",
+      minuti: oraSeduta[0] ? (oraSeduta[1] || "00") : "",
+      protocollo: String(prot.numero || ""),
+      protGiorno: pd ? pd[1] : "",
+      protMese: pd ? pd[2] : "",
+      protAnno: pd ? pd[3].slice(2) : "",
+      modalita: modalita.modalita || "",
+      meet: linkRiunione[0] || ""
     };
   });
 
@@ -7704,10 +7898,9 @@ function riconosciDocumento(testo, lettura){
         if(I.classi.indexOf(chiaveClasse(c)) < 0) I.classi.push(chiaveClasse(c));
       });
     });
-    var nelTesto = " " + String(testo || "").toUpperCase().replace(/[^0-9A-Z]+/g, " ") + " ";
     (stato.config.classi || []).forEach(function(c){
       var k = chiaveClasse(c);
-      if(k && nelTesto.indexOf(" " + k + " ") >= 0 && I.classi.indexOf(k) < 0) I.classi.push(k);
+      if(k && classeNelTesto(c, testo) && I.classi.indexOf(k) < 0) I.classi.push(k);
     });
     STATO_IMPORT.integrazione = I;
     /* le sedute ci sono gia': l'integrazione non ne crea di nuove */
@@ -7808,8 +8001,11 @@ function leggiTestoARegole(testo, nome){
   disegna();
 
   var pl = protDaLocale();
+  /* un numero con una cifra non riconosciuta non è un numero: togliere il «?»
+     ne darebbe un altro, più corto. Resta vuoto, e il pannello lo chiede. */
+  var numeroLetto = STATO_IMPORT.prot.numero || pl.numero || "";
   var prot = {
-    numero: (STATO_IMPORT.prot.numero || pl.numero || "").replace(/\?/g, ""),
+    numero: /\?/.test(numeroLetto) ? "" : numeroLetto,
     data: (STATO_IMPORT.prot.data || pl.data || "")
   };
   if(/\?/.test(prot.data)) prot.data = "";
