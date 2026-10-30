@@ -642,7 +642,7 @@ dialog::backdrop{background:rgba(30,18,8,.5)}
 /* I comandi stanno sempre in una colonna accanto all'elenco, anche sul
    telefono: la colonna si stringe, non scende sotto. */
 .registro{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:18px;align-items:start}
-.registro-comandi{position:sticky;top:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.registro-comandi{position:sticky;top:calc(var(--alto-testata,0px) + 12px);display:flex;flex-direction:column;gap:8px;min-width:0}
 .registro-comandi .btn{width:100%;justify-content:center;white-space:normal;text-align:center}
 .registro .vuoto{margin:0}
 /* qui «svolta» è la condizione normale di un'attività: non si barra */
@@ -659,12 +659,14 @@ dialog::backdrop{background:rgba(30,18,8,.5)}
 /* ---------- promemoria: i documenti conservati per intero ---------- */
 .pm-proposta{margin-top:14px;padding:12px 14px;border:1px dashed var(--line);border-radius:8px;background:var(--surface-2)}
 .pm-proposta p{margin:0 0 8px}
-.pm-voce{padding:12px 16px;border-top:1px solid var(--line-soft);min-width:0}
+.pm-voce{padding:12px 16px;border-top:1px solid var(--line-soft);min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start}
+.pm-corpo{min-width:0}
+.pm-comandi{display:flex;flex-direction:column;gap:6px;min-width:0;width:130px}
+.pm-comandi .btn{width:100%;justify-content:center;white-space:normal;text-align:center}
 .pm-voce:first-of-type{border-top:0}
 .pm-titolo{font-size:16px;margin:0 0 2px;overflow-wrap:anywhere}
 .pm-meta{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--faint);margin:0 0 6px}
 .pm-estratto{font-size:14px;color:var(--muted);margin:0 0 8px;overflow-wrap:anywhere}
-.pm-azioni{justify-content:flex-start;flex-wrap:wrap;gap:8px}
 .pm-testo{margin:8px 0 10px}
 .pm-dest{font-size:13.5px;color:var(--muted);margin:0 0 10px}
 .pm-capoverso{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start;padding:6px 0;border-top:1px solid var(--line-soft)}
@@ -676,6 +678,44 @@ dialog::backdrop{background:rgba(30,18,8,.5)}
 .pm-modifica .campo{margin-bottom:10px}
 #pm-cerca{width:100%;min-width:0}
 .btn-pericolo{color:var(--ossido);border-color:var(--ossido)}
+
+/* ---------- quando la lettura automatica non basta ---------- */
+.lettura-contenuto{min-width:0}
+.comandi-lettura{max-height:calc(100vh - var(--alto-testata,0px) - 24px);overflow:auto}
+.comandi-lettura .comandi-titolo{margin:8px 0 0;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+.avviso-lettura{margin:10px 0}
+.conferma-voci>li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px}
+.conferma-voci>li>*{grid-column:1}
+.conferma-voci>li.cv-sezione{grid-template-columns:1fr}
+.conferma-voci>li>.cv-comandi{grid-column:2;grid-row:1 / span 6;display:flex;flex-direction:column;gap:6px;align-self:start}
+.cv-stato{margin:2px 0 0;font-size:12.5px}
+.cv-manca{color:var(--ossido)}
+.voce-modifica{border:1px solid var(--accent);border-radius:8px;padding:10px 12px;margin:10px 0;background:var(--surface)}
+.voce-modifica h3{margin:0 0 4px;font-size:16px}
+.vm-campi{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.vm-campi .campo{margin:0;min-width:0}
+.vm-campi .campo.largo{grid-column:1/-1}
+.vm-campi input,.vm-campi select,.vm-campi textarea{width:100%;min-width:0;box-sizing:border-box;font:inherit}
+.vm-campi .etichetta-campo,.vm-componenti legend{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+.vm-componenti{border:1px solid var(--line-soft);border-radius:8px;padding:6px 10px 10px}
+.vm-componenti label{margin-right:12px}
+.vm-componenti .vm-punti-rapp{display:block;margin-top:6px}
+.vm-odg{margin:4px 0 0;padding-left:22px;display:grid;gap:6px}
+.vm-riga-punto>*{min-width:0}
+.vm-riga-punto{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start}
+.vm-cmd-punto{display:flex;gap:4px}
+.vm-cmd-punto .btn{min-width:32px;justify-content:center}
+.vm-sotto{margin:2px 0 0}
+details.guida{margin-top:12px;border-top:1px dashed var(--line);padding-top:8px}
+details.guida>summary{cursor:pointer;font-weight:600}
+.tg-scelta{margin:4px 0}
+.testo-guida{border:1px solid var(--line-soft);border-radius:8px;background:var(--surface);max-height:70vh;overflow:auto;font-size:13.5px;line-height:1.45}
+.tg-riga{display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:4px;padding:3px 6px;cursor:pointer;border-left:3px solid transparent}
+.tg-riga:hover{background:var(--surface-2)}
+.tg-riga.scelta{background:var(--accent-soft);border-left-color:var(--accent)}
+.tg-riga.tg-vuota{padding:0 6px;min-height:6px}
+.tg-n{color:var(--faint);font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;text-align:right;user-select:none}
+.tg-t{white-space:pre-wrap;overflow-wrap:anywhere}
 
 /* =======================================================
    ADATTAMENTO A SCHERMI STRETTI — telefono in verticale
@@ -729,9 +769,16 @@ dialog::backdrop{background:rgba(30,18,8,.5)}
   /* nei promemoria il testo vuole tutta la larghezza: la ricerca sale sopra */
   .registro.promemoria-vista{grid-template-columns:minmax(0,1fr)}
   .promemoria-vista .registro-comandi{order:-1;position:static}
-  .pm-voce{padding:12px 13px}
+  .pm-voce{padding:12px 10px;gap:8px}
+  .pm-comandi{width:78px}
+  .pm-comandi .btn{font-size:12px;padding:7px 4px;min-height:44px;line-height:1.2}
+  .conferma-voci>li>.cv-comandi .btn{font-size:12px;padding:6px 6px;min-height:44px;max-width:78px;white-space:normal}
+  .vm-campi{grid-template-columns:minmax(0,1fr)}
+  .vm-cmd-punto{flex-direction:column}
+  .vm-cmd-punto .btn{min-height:32px}
+  .tg-riga{padding:6px 4px;grid-template-columns:2em minmax(0,1fr)}
   .pm-capoverso{gap:8px}
-  .registro-comandi{top:8px;gap:6px}
+  .registro-comandi{top:calc(var(--alto-testata,0px) + 8px);gap:6px}
   .registro-comandi .btn{font-size:12px;padding:7px 4px;min-height:44px;line-height:1.2}
   .registro .riga{padding:10px 8px 10px 6px;gap:8px;grid-template-columns:38px minmax(0,1fr)}
   .registro .gruppo-testa{flex-wrap:wrap;gap:4px 8px}
@@ -942,6 +989,17 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
   .cartella-file{padding:9px 8px}
   .cartella-dentro{padding-left:6px;margin-left:10px}
 }
+
+/* le date tralasciate: il comando accanto alla riga, non sotto */
+.tralasciate .resti>li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;align-items:start}
+.tralasciate .resti>li>*{grid-column:1}
+.tralasciate .resti>li>.btn{grid-column:2;grid-row:1 / span 3;max-width:110px;white-space:normal;text-align:center}
+@media (max-width:640px){
+  .tralasciate .resti>li>.btn{max-width:78px;font-size:12px;min-height:44px}
+}
+/* la colonna dei comandi resta in vista mentre si scorre il testo: «clip»
+   taglia gli angoli come «hidden», ma non ferma lo scorrimento della colonna */
+.gruppo.sez-lettura{overflow:clip}
 </style>
 <script>
 /* Il tema si applica prima di ogni altra cosa, così non si vede il lampo
@@ -3994,6 +4052,11 @@ function annoInLettere(a){
    voce "Verbale ... da redigere", che rimanda alla seduta corrispondente. */
 function tipoVerbale(v){
   if(!v || v.tipo!=="impegno") return "";
+  /* la seduta scritta dal documento, o a mano dall'inserimento guidato,
+     porta il suo organo nell'identificativo, qualunque titolo abbia */
+  var org=(typeof v.id==="string" && v.id.match(/^(consiglio-classe|consiglio-istituto)-\d{4}-\d{2}-\d{2}/)) || [];
+  if(org[1]==="consiglio-istituto") return "cdi";
+  if(org[1]==="consiglio-classe") return "cdc";
   /* l'apostrofo tipografico si equipara a quello dritto: le voci scritte
      leggendo un documento arrivano spesso con "d’Istituto" */
   var t=(v.titolo||"").toLowerCase().replace(/[‘’ʼ´`]/g, "'");
@@ -6288,89 +6351,24 @@ function leggiARegole(testo, opzioni){
     delete v.luogo;
   });
 
-  /* la convocazione del Consiglio d'Istituto porta con sé i campi che il
-     verbale precompilato si aspetta */
+  /* la convocazione del Consiglio d'Istituto, di un consiglio di classe, del
+     GLO e del GLI porta con sé i campi che il verbale precompilato si
+     aspetta. Nel consiglio di classe la modalità si legge in tutto il testo,
+     e i rappresentanti dalle frasi che li chiamano. */
   voci.forEach(function(v){
-    if(v.categoria !== "consiglio-istituto") return;
-    var p = v.data.split("-");
-    var oraSeduta = (v.oraLetta || "").split(":");
-    var pd = String(prot.data || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    v.convocazione = {
-      numeroVerbale: String(config.prossimoVerbaleCdI || ""),
-      annoScolastico: annoScolasticoDi(v.data).replace("/", "-"),
-      giorno: p[2],
-      mese: MESI_NOME[Number(p[1]) - 1],
-      anno: ANNI_LETTERE[Number(p[0])] || String(p[0]),
-      ora: oraSeduta[0] || "",
-      minuti: oraSeduta[1] || "00",
-      protocollo: String(prot.numero || ""),
-      protGiorno: pd ? pd[1] : "",
-      protMese: pd ? pd[2] : "",
-      protAnno: pd ? pd[3].slice(2) : "",
-      modalita: modalita.modalita || "presenza",
-      presidenza: /IL\s+PRESIDENTE/i.test(normalizzaTesto(testo)) ? "pres" : "pres",
-      odg: odg.punti.map(function(x){ return {testo: x.testo, sotto: (x.sotto || []).slice()}; })
-    };
-  });
-
-  /* anche la seduta di un consiglio di classe, letta dal calendario della
-     circolare, porta con sé i campi del verbale precompilato. La classe è
-     quella della voce: se la riga ne nomina più d'una del docente, vale
-     quella che coordina, perché il verbale lo redige il coordinatore */
-  voci.forEach(function(v){
-    if(!perConsigli(v)) return;
-    var p = v.data.split("-");
-    var oraSeduta = (v.oraLetta || "").split(":");
-    var pd = String(prot.data || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    var sue = String(v.classe || "").split(/\s*,\s*/).filter(Boolean);
-    var coordinate = sue.filter(function(c){ return classeIn(c, classiCoordinate(config, annoScolasticoDi(v.data))); });
-    var classeSeduta = coordinate[0] || sue[0] || "";
-    v.convocazione = {
-      classe: classeSeduta,
-      annoScolastico: annoScolasticoDi(v.data),
-      giorno: String(Number(p[2])),
-      mese: MESI_NOME[Number(p[1]) - 1],
-      anno: ANNI_LETTERE[Number(p[0])] || String(p[0]),
-      ora: oraSeduta[0] ? String(Number(oraSeduta[0])) : "",
-      minuti: oraSeduta[0] ? (oraSeduta[1] || "00") : "",
+    var cat = v.categoria;
+    if(cat === "consiglio-classe" && !perConsigli(v)) return;
+    var conv = convocazionePer(v, {
+      ora: v.oraLetta || "",
+      protocollo: prot.numero || "", protData: prot.data || "",
       circolare: circolare || "",
-      protocollo: String(prot.numero || ""),
-      protGiorno: pd ? pd[1] : "",
-      protMese: pd ? pd[2] : "",
-      protAnno: pd ? pd[3].slice(2) : "",
-      modalita: modalitaConsigli || "presenza",
-      /* la stanza scritta nel documento vince su quella fissa delle Impostazioni */
-      meet: linkRiunione[0] || String(config.meet || ""),
-      rappresentanti: rappresentantiPer(regoleRappresentanti, classeSeduta),
-      odg: odg.punti.map(function(x){ return {testo: x.testo, sotto: (x.sotto || []).slice()}; })
-    };
-  });
-
-  /* anche la seduta del GLO e del GLI porta con sé la sua convocazione: la
-     data, l'ora, la modalità, la stanza e il protocollo del documento, che
-     così resta legato alla voce. Non c'è un verbale da precompilare. */
-  voci.forEach(function(v){
-    if(v.categoria !== "glo" && v.categoria !== "gli") return;
-    var p = v.data.split("-");
-    var oraSeduta = (v.oraLetta || "").split(":");
-    var pd = String(prot.data || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    v.convocazione = {
-      organo: v.categoria,
-      classe: v.classe || "",
-      fase: v.categoria === "glo" ? faseGlo : "",
-      annoScolastico: annoScolasticoDi(v.data),
-      giorno: String(Number(p[2])),
-      mese: MESI_NOME[Number(p[1]) - 1],
-      anno: ANNI_LETTERE[Number(p[0])] || String(p[0]),
-      ora: oraSeduta[0] ? String(Number(oraSeduta[0])) : "",
-      minuti: oraSeduta[0] ? (oraSeduta[1] || "00") : "",
-      protocollo: String(prot.numero || ""),
-      protGiorno: pd ? pd[1] : "",
-      protMese: pd ? pd[2] : "",
-      protAnno: pd ? pd[3].slice(2) : "",
-      modalita: modalita.modalita || "",
-      meet: linkRiunione[0] || ""
-    };
+      modalita: cat === "consiglio-classe" ? modalitaConsigli : modalita.modalita,
+      link: linkRiunione[0] || "",
+      fase: faseGlo,
+      regoleRappresentanti: regoleRappresentanti,
+      odg: odg.punti
+    }, config);
+    if(conv) v.convocazione = conv;
   });
 
   var sedutaOra = "";
@@ -6449,6 +6447,80 @@ function leggiARegole(testo, opzioni){
     voci: voci,
     scartate: scartate,
     righeNonUsate: elencoNonUsate
+  };
+}
+
+/* La convocazione che accompagna la seduta di un organo: i campi del verbale
+   precompilato. È la stessa per una voce letta dal documento, corretta prima
+   della conferma o scritta a mano dall'inserimento guidato.
+   d: {ora "HH:MM", protocollo, protData "gg/mm/aaaa", circolare, modalita,
+       link, fase, odg [{testo, sotto}], regoleRappresentanti oppure
+       rappresentanti {genitori, studenti, punti}} */
+function convocazionePer(v, d, config){
+  config = config || {};
+  var cat = v.categoria;
+  if(cat !== "consiglio-istituto" && cat !== "consiglio-classe" && cat !== "glo" && cat !== "gli") return null;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v.data || "")) return null;
+  var p = v.data.split("-");
+  var oraSeduta = String(d.ora || "").split(":");
+  var pd = String(d.protData || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  var odgC = (d.odg || []).map(function(x){ return {testo: x.testo, sotto: (x.sotto || []).slice()}; });
+  var base = {
+    protocollo: String(d.protocollo || ""),
+    protGiorno: pd ? pd[1] : "",
+    protMese: pd ? pd[2] : "",
+    protAnno: pd ? pd[3].slice(2) : ""
+  };
+  var data = {
+    giorno: String(Number(p[2])),
+    mese: MESI_NOME[Number(p[1]) - 1],
+    anno: ANNI_LETTERE[Number(p[0])] || String(p[0]),
+    ora: oraSeduta[0] ? String(Number(oraSeduta[0])) : "",
+    minuti: oraSeduta[0] ? (oraSeduta[1] || "00") : ""
+  };
+  if(cat === "consiglio-istituto"){
+    return {
+      numeroVerbale: String(config.prossimoVerbaleCdI || ""),
+      annoScolastico: annoScolasticoDi(v.data).replace("/", "-"),
+      giorno: p[2], mese: data.mese, anno: data.anno,
+      ora: oraSeduta[0] || "",
+      minuti: oraSeduta[1] || "00",
+      protocollo: base.protocollo, protGiorno: base.protGiorno, protMese: base.protMese, protAnno: base.protAnno,
+      modalita: d.modalita || "presenza",
+      presidenza: "pres",
+      odg: odgC
+    };
+  }
+  if(cat === "consiglio-classe"){
+    /* la classe è quella della voce: se ne nomina più d'una del docente, vale
+       quella che coordina, perché il verbale lo redige il coordinatore */
+    var sue = String(v.classe || "").split(/\s*,\s*/).filter(Boolean);
+    var coordinate = sue.filter(function(c){ return classeIn(c, classiCoordinate(config, annoScolasticoDi(v.data))); });
+    var classeSeduta = coordinate[0] || sue[0] || "";
+    return {
+      classe: classeSeduta,
+      annoScolastico: annoScolasticoDi(v.data),
+      giorno: data.giorno, mese: data.mese, anno: data.anno, ora: data.ora, minuti: data.minuti,
+      circolare: d.circolare || "",
+      protocollo: base.protocollo, protGiorno: base.protGiorno, protMese: base.protMese, protAnno: base.protAnno,
+      modalita: d.modalita || "presenza",
+      /* la stanza scritta nel documento vince su quella fissa delle Impostazioni */
+      meet: d.link || String(config.meet || ""),
+      rappresentanti: d.rappresentanti ? {genitori: !!d.rappresentanti.genitori, studenti: !!d.rappresentanti.studenti,
+                                          punti: String(d.rappresentanti.punti || "")}
+                                       : rappresentantiPer(d.regoleRappresentanti || [], classeSeduta),
+      odg: odgC
+    };
+  }
+  return {
+    organo: cat,
+    classe: v.classe || "",
+    fase: cat === "glo" ? (d.fase || "") : "",
+    annoScolastico: annoScolasticoDi(v.data),
+    giorno: data.giorno, mese: data.mese, anno: data.anno, ora: data.ora, minuti: data.minuti,
+    protocollo: base.protocollo, protGiorno: base.protGiorno, protMese: base.protMese, protAnno: base.protAnno,
+    modalita: d.modalita || "",
+    meet: d.link || ""
   };
 }
 
@@ -7752,6 +7824,10 @@ function statoImportVuoto(nome){
     testo: "",
     posizioni: null, /* {testo, righe}: dove sta ogni riga del PDF sulla pagina */
     promemoria: "",  /* l'identificativo del promemoria conservato da questo documento */
+    modifica: null,  /* {indice, campi}: la voce proposta in correzione, o una nuova (-1) */
+    guidato: false,  /* l'inserimento guidato è aperto */
+    selRighe: null,  /* {da, a}: le righe del testo scelte con il tocco */
+    selTesto: "",    /* il passaggio selezionato trascinando */
     lettura: null,   /* l'esito di leggiARegole */
     spuntate: {},    /* indice della voce candidata -> vero se da scrivere */
     gia: {},         /* indice della voce candidata -> titolo di quella che c'è già */
@@ -8020,7 +8096,8 @@ async function testoDaFile(file){
   }
   if(nome.endsWith(".docx") || /wordprocessingml/.test(file.type || "")) return {testo: await testoDaDocx(buf), immagine: null};
   if(nome.endsWith(".doc")) throw new Error("Il formato .doc vecchio non si legge: salvalo come .docx o come PDF.");
-  if(/^image\//.test(file.type || "")) throw new Error("Le immagini non vengono lette: serve un PDF, un file Word o del testo.");
+  /* una fotografia non ha testo: si dice, e si scrive a mano */
+  if(/^image\//.test(file.type || "") || /\.(jpe?g|png|gif|webp|bmp|heic|tiff?)$/.test(nome)) return {testo: "", immagine: null};
   var t = new TextDecoder().decode(buf);
   if(nome.endsWith(".html") || nome.endsWith(".htm")){
     /* un verbale gia' compilato porta la composizione del consiglio */
@@ -8338,8 +8415,11 @@ async function leggiDocumento(file){
     return;
   }
   if(!testo || testo.replace(/\s/g, "").length < 40){
-    STATO_IMPORT.fase = "errore";
-    STATO_IMPORT.errore = "Dal documento non è uscito testo utile. Se è una scansione o una fotografia, non può essere letto: incolla il testo a mano.";
+    /* una scansione o una fotografia: niente da leggere, ma la voce e il
+       promemoria si scrivono a mano, con il nome del file come fonte */
+    STATO_IMPORT.fase = "senzaTesto";
+    STATO_IMPORT.testo = "";
+    STATO_IMPORT.lettura = null;
     disegna();
     return;
   }
@@ -8394,6 +8474,10 @@ function leggiTestoARegole(testo, nome){
   riconosciDocumento(testo, lettura);
   STATO_IMPORT.riferimento = leggiRiferimento(testo, lettura);
   togliDateVecchie(lettura, STATO_IMPORT.riferimento);
+  /* le voci che il docente ha corretto, o scritto a mano, su questo stesso
+     documento e non ancora confermato tornano come le aveva lasciate */
+  applicaCorrezioni(lettura);
+  STATO_IMPORT.modifica = null;
   STATO_IMPORT.lettura = lettura;
   STATO_IMPORT.spuntate = {};
   STATO_IMPORT.gia = {};
@@ -8412,6 +8496,7 @@ function leggiTestoARegole(testo, nome){
     STATO_IMPORT.spuntate[i] = !!lettura.documento.riguardaIlDocente &&
                                (v.categoria !== "comunicazione" || !!v.spunta) &&
                                !eliminataDalDocente(idVoceDaLettura(v)) && !v.origineEliminata;
+    if(v.corretta || v.aMano) STATO_IMPORT.spuntate[i] = true;
   });
   STATO_IMPORT.fase = lettura.voci.length ? "conferma" : "fatto";
 
@@ -8493,6 +8578,9 @@ function scriviVociConfermate(){
     delete voce.fineIntervallo;
     delete voce.origineEliminata;
     delete voce.daData;
+    delete voce.corretta;
+    delete voce.aMano;
+    delete voce.chiaveOrig;
     voce.creato = mia && mia.creato ? mia.creato : adesso;
     voce.aggiornato = adesso;
     voce.letta = adesso;
@@ -8535,6 +8623,9 @@ function scriviVociConfermate(){
       ", nelle " + conConv.length + (conConv.length === 1 ? " voce" : " voci") + " della convocazione";
   }
   STATO_IMPORT.fase = "fatto";
+  STATO_IMPORT.modifica = null;
+  /* confermate, le correzioni non servono più */
+  dimenticaCorrezioni();
   notaFlash((scritte.length ? (scritte.length + (scritte.length === 1 ? " voce scritta in agenda." : " voci scritte in agenda."))
                             : "Nessuna voce scritta.") +
             (eliminate ? " " + eliminate + (eliminate === 1 ? " voce eliminata da te non è stata ricreata." : " voci eliminate da te non sono state ricreate.") : ""));
@@ -8727,6 +8818,7 @@ function etichettaFase(f){
   if(f === "conferma") return "da confermare";
   if(f === "fatto") return "fatto";
   if(f === "errore") return "non riuscita";
+  if(f === "senzaTesto") return "senza testo";
   return "";
 }
 
@@ -8739,8 +8831,8 @@ function disegnaDocumenti(){
   h += '<section class="gruppo" style="grid-column:1/-1"><div class="gruppo-testa"><h2>Carica un documento</h2></div>' +
        '<div class="corpo-pannello">';
   h += '<p>Formati letti: <b>PDF</b>, <b>Word (.docx)</b>, testo e HTML. Le fotografie e le scansioni no: ' +
-       'di quelle non esiste testo da leggere.</p>';
-  h += '<div class="riga-input"><input type="file" id="in-doc" accept=".pdf,.docx,.txt,.md,.html,.htm,application/pdf">' +
+       'di quelle non esiste testo da leggere, e la voce o il promemoria si scrivono a mano.</p>';
+  h += '<div class="riga-input"><input type="file" id="in-doc" accept=".pdf,.docx,.txt,.md,.html,.htm,application/pdf,image/*">' +
        '<button class="btn btn-primary" type="button" data-cmd="leggi-doc">Leggi il documento</button></div>';
   h += '<p class="aiuto">La lettura avviene tutta dentro la pagina, a regole fisse: non passa da nessun servizio, ' +
        'non costa niente e a parità di documento dà sempre lo stesso esito. ' +
@@ -8761,20 +8853,24 @@ function disegnaDocumenti(){
          '<span class="quando">' + esc(etichettaFase(STATO_IMPORT.fase)) + '</span></div>' +
          '<div class="corpo-pannello">';
 
+    /* il contenuto a sinistra, i comandi in una colonna accanto */
+    h += '<div class="registro lettura-griglia"><div class="lettura-contenuto">';
     if(STATO_IMPORT.fase === "errore") h += '<div class="avviso">' + esc(STATO_IMPORT.errore) + '</div>';
+    if(STATO_IMPORT.fase === "senzaTesto") h += schedaSenzaTesto();
 
     var L = STATO_IMPORT.lettura;
     if(STATO_IMPORT.tipoDoc === "composizione" || (L && STATO_IMPORT.tipoDoc !== "convocazione")) h += schedaSpeciale();
-    if(L) h += schedaDocumento(L);
-    if(L && STATO_IMPORT.fase === "conferma") h += schedaConferma(L);
-    if(L && STATO_IMPORT.fase === "fatto") h += schedaScritte();
-    if(L && (STATO_IMPORT.fase === "conferma" || STATO_IMPORT.fase === "fatto")) h += schedaPromemoria(L);
-    if(L) h += schedaResti(L);
-
-    if(STATO_IMPORT.testo){
-      h += '<details style="margin-top:10px"><summary class="aiuto" style="cursor:pointer">Testo estratto dal documento</summary>' +
-           '<pre class="testo-estratto">' + esc(STATO_IMPORT.testo.slice(0, 20000)) + '</pre></details>';
+    if(L && STATO_IMPORT.testo) h += schedaDocumento(L);
+    if(L && STATO_IMPORT.testo) h += avvisoLettura(L);
+    if(STATO_IMPORT.modifica) h += schedaModificaVoce();
+    else{
+      if(L && STATO_IMPORT.fase === "conferma") h += schedaConferma(L);
+      if(L && STATO_IMPORT.fase === "fatto") h += schedaScritte();
     }
+    if(L && STATO_IMPORT.testo && (STATO_IMPORT.fase === "conferma" || STATO_IMPORT.fase === "fatto")) h += messaggioPromemoria(L);
+    if(L) h += schedaResti(L);
+    h += testoGuidato();
+    h += '</div><aside class="registro-comandi comandi-lettura" aria-label="Comandi della lettura">' + comandiLettura(L) + '</aside></div>';
     h += '</div></section>';
   }
 
@@ -8813,8 +8909,6 @@ function schedaConferma(L){
                           : ' voci riguardano sedute già in agenda e le aggiornano') +
          ' con la versione del documento: togli la spunta a quelle che vuoi lasciare come sono.</p>';
   }
-  h += '<div class="riga-input"><button class="btn btn-piccolo" type="button" data-cmd="spunta-tutte">Spunta tutte</button>' +
-       '<button class="btn btn-piccolo" type="button" data-cmd="spunta-nessuna">Togli le spunte</button></div>';
   h += '<ul class="conferma-voci">';
   var primaComunicazione = true;
   L.voci.forEach(function(v, i){
@@ -8833,6 +8927,15 @@ function schedaConferma(L){
          '<span class="cv-testa">' + tagClassi(v) +
          '<span class="txt">' + esc(v.titolo) + '</span>' +
          '<span class="num">' + esc(dataLeggibile(v.data)) + '</span></span></label>';
+    /* accanto alla voce, i suoi comandi; sotto, quello che le manca */
+    var problemi = v.categoria === "comunicazione" ? [] : problemiVoce(v);
+    h += '<span class="cv-comandi"><button class="btn btn-piccolo" type="button" data-cmd="correggi" data-i="' + i + '">Correggi</button>' +
+         ((v.corretta || v.aMano) ? '<button class="btn btn-piccolo" type="button" data-cmd="scarta-correzione" data-i="' + i + '">' +
+                                    (v.aMano ? 'Togli' : 'Scarta la correzione') + '</button>' : '') + '</span>';
+    if(v.corretta || v.aMano || problemi.length){
+      h += '<p class="cv-stato">' + (v.corretta ? '<b>corretta da te</b>' : v.aMano ? '<b>scritta da te</b>' : '') +
+           (problemi.length ? ((v.corretta || v.aMano) ? ' · ' : '') + '<span class="cv-manca">' + esc(problemi.join(", ")) + '</span>' : '') + '</p>';
+    }
     if(v.dettagli){
       h += '<p class="cv-dett">' + esc(v.dettagli.split("\n").slice(0, 3).join(" · ").slice(0, 220)) +
            (v.dettagli.length > 220 ? "\u2026" : "") + '</p>';
@@ -8845,8 +8948,6 @@ function schedaConferma(L){
     h += '</li>';
   });
   h += '</ul>';
-  h += '<div class="riga-input"><button class="btn btn-primary" type="button" data-cmd="scrivi-voci">Scrivi in agenda le voci spuntate</button>' +
-       '<button class="btn" type="button" data-cmd="annulla-lettura">Lascia perdere</button></div>';
   return h;
 }
 
@@ -8879,16 +8980,19 @@ function schedaResti(L){
   if(L.scartate.length){
     var motivi = {};
     L.scartate.forEach(function(s){ motivi[s.motivo] = (motivi[s.motivo] || 0) + 1; });
-    h += '<details style="margin-top:10px"><summary class="aiuto" style="cursor:pointer">' +
+    /* restano in vista, e da ciascuna si può fare una voce */
+    h += '<details class="tralasciate" open style="margin-top:10px"><summary class="aiuto" style="cursor:pointer">' +
          L.scartate.length + (L.scartate.length === 1 ? ' data tralasciata' : ' date tralasciate') + ' con il loro motivo (' +
          esc(Object.keys(motivi).map(function(k){ return motivi[k] + " " + k; }).join(", ")) + ')</summary>';
     h += '<ul class="resti">';
-    L.scartate.forEach(function(s){
+    L.scartate.forEach(function(s, k){
       /* le date tralasciate da un'uscita didattica non hanno una riga sola:
          si dice il giorno */
       var dove = s.n >= 0 ? 'riga ' + (s.n + 1) : String(s.data || "").split("-").reverse().join("/");
       h += '<li><span class="nr">' + esc(dove) + '</span><span class="txt">' + esc(s.testo.slice(0, 140)) + '</span>' +
-           '<span class="num">' + esc(s.motivo) + '</span></li>';
+           '<span class="num">' + esc(s.motivo) + '</span>' +
+           (s.data ? '<button class="btn btn-piccolo" type="button" data-cmd="g-da-data" data-n="' + k + '">Crea voce da questa data</button>' : '') +
+           '</li>';
     });
     h += '</ul></details>';
   }
@@ -9121,7 +9225,7 @@ function schedaComposizione(){
    tocca. Li cancella soltanto il docente.
    ============================================================ */
 
-var VISTA_PROMEMORIA = {cerca: "", aperto: "", modifica: "", elimina: ""};
+var VISTA_PROMEMORIA = {cerca: "", aperto: "", modifica: "", elimina: "", bozza: null};
 
 /* il segno che apre un punto di un elenco: «1.», «1)», «a)», un pallino o un
    trattino. I pallini dei PDF arrivano spesso come un carattere privato del
@@ -9348,24 +9452,29 @@ function conservaComePromemoria(){
   return STATO_IMPORT.promemoria;
 }
 
-/* il riquadro della schermata di lettura */
-function schedaPromemoria(L){
+/* il promemoria già conservato da questo documento, se c'è */
+function promemoriaGiaConservato(L){
   var gia = STATO_IMPORT.promemoria && stato.promemoria && stato.promemoria[STATO_IMPORT.promemoria];
   if(!gia && stato.promemoria && STATO_IMPORT.testo){
     var pos = STATO_IMPORT.posizioni && STATO_IMPORT.posizioni.testo === STATO_IMPORT.testo ? STATO_IMPORT.posizioni.righe : null;
     var id = idPromemoria(promemoriaDaLettura(STATO_IMPORT.testo, pos, L, STATO_IMPORT.nomeFile));
     if(stato.promemoria[id]){ STATO_IMPORT.promemoria = id; gia = stato.promemoria[id]; }
   }
-  if(gia){
-    return '<div class="pm-proposta"><p>Questo documento è fra i promemoria.</p>' +
-           '<button class="btn btn-piccolo" type="button" data-cmd="pm-vai" data-id="' + esc(gia.id) + '">Apri il promemoria</button></div>';
-  }
-  var senzaVoci = !L.voci.length;
-  return '<div class="pm-proposta">' +
-         (senzaVoci ? '<p>Questo documento non dà voci in agenda. Puoi conservarlo come promemoria: il testo intero, ' +
-                      'dall\'oggetto alla firma, resta da consultare nella sezione Promemoria.</p>'
-                    : '<p class="aiuto">Puoi anche conservare il testo intero del documento fra i promemoria.</p>') +
-         '<button class="btn' + (senzaVoci ? ' btn-primary' : '') + '" type="button" data-cmd="conserva-promemoria">Conserva come promemoria</button></div>';
+  return gia || null;
+}
+/* il messaggio sta nel contenuto della lettura, il pulsante nella colonna */
+function messaggioPromemoria(L){
+  if(promemoriaGiaConservato(L)) return '<p class="aiuto pm-messaggio">Questo documento è fra i promemoria.</p>';
+  return !L.voci.length
+    ? '<p class="pm-messaggio">Questo documento non dà voci in agenda. Puoi conservarlo come promemoria: il testo intero, ' +
+      'dall\'oggetto alla firma, resta da consultare nella sezione Promemoria.</p>'
+    : '<p class="aiuto pm-messaggio">Puoi anche conservare il testo intero del documento fra i promemoria.</p>';
+}
+function comandoPromemoria(L){
+  var gia = promemoriaGiaConservato(L);
+  if(gia) return '<div class="pm-proposta"><button class="btn btn-piccolo" type="button" data-cmd="pm-vai" data-id="' + esc(gia.id) + '">Apri il promemoria</button></div>';
+  return '<div class="pm-proposta"><button class="btn' + (!L.voci.length ? ' btn-primary' : '') +
+         '" type="button" data-cmd="conserva-promemoria">Conserva come promemoria</button></div>';
 }
 
 /* ---------- copiare ---------- */
@@ -9413,7 +9522,7 @@ function estrattoPromemoria(p, cerca){
 }
 
 function schedaModificaPromemoria(p){
-  return '<div class="pm-modifica" data-pm-id="' + esc(p.id) + '">' +
+  return '<div class="pm-modifica" data-pm-id="' + esc(p.id || "") + '">' +
     '<div class="campo largo"><label for="pm-titolo">Titolo</label><input id="pm-titolo" value="' + esc(p.titolo) + '"></div>' +
     '<div class="pm-campi">' +
     '<div class="campo"><label for="pm-circolare">Circolare n.</label><input id="pm-circolare" value="' + esc(p.circolare || "") + '"></div>' +
@@ -9423,9 +9532,19 @@ function schedaModificaPromemoria(p){
     '<div class="campo largo"><label for="pm-destinatari">Destinatari, uno per riga</label>' +
     '<textarea id="pm-destinatari" rows="3">' + esc((p.destinatari || []).join("\n")) + '</textarea></div>' +
     '<div class="campo largo"><label for="pm-testo">Testo: una riga vuota separa i capoversi</label>' +
-    '<textarea id="pm-testo" rows="16">' + esc((p.capoversi || []).join("\n\n")) + '</textarea></div>' +
-    '<div class="riga-input"><button class="btn btn-primary" type="button" data-cmd="pm-salva" data-id="' + esc(p.id) + '">Salva</button>' +
-    '<button class="btn" type="button" data-cmd="pm-annulla">Annulla</button></div></div>';
+    '<textarea id="pm-testo" rows="16">' + esc((p.capoversi || []).join("\n\n")) + '</textarea></div></div>';
+}
+/* i campi del modulo, letti */
+function campiPromemoria(p){
+  function val(k){ var e = document.getElementById(k); return e ? e.value : ""; }
+  return Object.assign({}, p, {
+    titolo: val("pm-titolo").trim() || p.titolo,
+    circolare: val("pm-circolare").trim(),
+    protocollo: val("pm-protocollo").trim(),
+    protData: val("pm-data").trim(),
+    destinatari: val("pm-destinatari").split(/\r?\n/).map(function(s){ return s.trim(); }).filter(Boolean),
+    capoversi: val("pm-testo").replace(/\r/g, "").split(/\n\s*\n/).map(function(s){ return s.trim(); }).filter(Boolean)
+  });
 }
 
 function schedaTestoPromemoria(p){
@@ -9452,26 +9571,39 @@ function disegnaPromemoria(){
   var h = testaVista("Promemoria", "I documenti conservati per intero: istruzioni, procedure, formule da copiare. " +
                      "Restano finché non li cancelli tu, anche al cambio d'anno.", "");
   h += '<div class="registro promemoria-vista"><div>';
+  /* un promemoria nuovo, da un passaggio scelto nel documento o da scrivere
+     a mano per una scansione: si conserva soltanto con «Conserva» */
+  var bz = VISTA_PROMEMORIA.bozza;
+  if(bz){
+    h += '<section class="gruppo"><div class="gruppo-testa"><h2>Nuovo promemoria</h2></div>' +
+         '<article class="pm-voce pm-bozza"><div class="pm-corpo">' + schedaModificaPromemoria(bz) + '</div>' +
+         '<div class="pm-comandi"><button class="btn btn-primary btn-piccolo" type="button" data-cmd="pm-salva-bozza">Conserva</button>' +
+         '<button class="btn btn-piccolo" type="button" data-cmd="pm-annulla-bozza">Annulla</button></div></article></section>';
+  }
   if(!tutti.length){
-    h += '<div class="vuoto"><h2>Nessun promemoria</h2><p>Leggi un documento in Documenti e premi ' +
-         '«Conserva come promemoria».</p></div>';
+    if(!bz) h += '<div class="vuoto"><h2>Nessun promemoria</h2><p>Leggi un documento in Documenti e premi ' +
+                 '«Conserva come promemoria».</p></div>';
   }else if(!trovati.length){
     h += '<div class="vuoto"><h2>Nessun promemoria trovato</h2><p>Nessun testo contiene «' + esc(cerca) + '».</p></div>';
   }else{
     h += '<section class="gruppo"><div class="gruppo-testa"><h2>' + (cerca ? 'Trovati' : 'Tutti') + '</h2>' +
-         '<span class="conta">' + trovati.length + (trovati.length === 1 ? ' promemoria' : ' promemoria') + '</span></div>';
+         '<span class="conta">' + trovati.length + ' promemoria</span></div>';
     trovati.forEach(function(p){
       var aperto = VISTA_PROMEMORIA.aperto === p.id, modifica = VISTA_PROMEMORIA.modifica === p.id;
-      h += '<article class="pm-voce" data-pm="' + esc(p.id) + '">' +
+      h += '<article class="pm-voce" data-pm="' + esc(p.id) + '"><div class="pm-corpo">' +
            '<h3 class="pm-titolo">' + esc(p.titolo) + '</h3>';
       var meta = metaPromemoria(p);
       if(meta) h += '<p class="pm-meta">' + esc(meta) + '</p>';
       if(modifica) h += schedaModificaPromemoria(p);
       else if(aperto) h += schedaTestoPromemoria(p);
       else h += '<p class="pm-estratto">' + esc(estrattoPromemoria(p, cerca)) + '</p>';
-      if(!modifica){
-        h += '<div class="azioni pm-azioni">' +
-             '<button class="btn btn-piccolo" type="button" data-cmd="pm-apri" data-id="' + esc(p.id) + '" aria-expanded="' + aperto + '">' +
+      /* i comandi della voce, nella sua colonna */
+      h += '</div><div class="pm-comandi pm-azioni">';
+      if(modifica){
+        h += '<button class="btn btn-primary btn-piccolo" type="button" data-cmd="pm-salva" data-id="' + esc(p.id) + '">Salva</button>' +
+             '<button class="btn btn-piccolo" type="button" data-cmd="pm-annulla">Annulla</button>';
+      }else{
+        h += '<button class="btn btn-piccolo" type="button" data-cmd="pm-apri" data-id="' + esc(p.id) + '" aria-expanded="' + aperto + '">' +
              (aperto ? 'Chiudi' : 'Apri il testo') + '</button>' +
              '<button class="btn btn-piccolo" type="button" data-cmd="pm-modifica" data-id="' + esc(p.id) + '">Modifica</button>';
         if(VISTA_PROMEMORIA.elimina === p.id){
@@ -9480,9 +9612,8 @@ function disegnaPromemoria(){
         }else{
           h += '<button class="btn btn-piccolo" type="button" data-cmd="pm-elimina" data-id="' + esc(p.id) + '">Elimina</button>';
         }
-        h += '</div>';
       }
-      h += '</article>';
+      h += '</div></article>';
     });
     h += '</section>';
   }
@@ -9496,15 +9627,7 @@ function disegnaPromemoria(){
 function salvaModificaPromemoria(id){
   var p = stato.promemoria && stato.promemoria[id];
   if(!p) return;
-  function val(k){ var e = document.getElementById(k); return e ? e.value : ""; }
-  var nuovo = Object.assign({}, p, {
-    titolo: val("pm-titolo").trim() || p.titolo,
-    circolare: val("pm-circolare").trim(),
-    protocollo: val("pm-protocollo").trim(),
-    protData: val("pm-data").trim(),
-    destinatari: val("pm-destinatari").split(/\r?\n/).map(function(s){ return s.trim(); }).filter(Boolean),
-    capoversi: val("pm-testo").replace(/\r/g, "").split(/\n\s*\n/).map(function(s){ return s.trim(); }).filter(Boolean)
-  });
+  var nuovo = campiPromemoria(p);
   VISTA_PROMEMORIA.modifica = "";
   VISTA_PROMEMORIA.aperto = id;
   salvaPromemoria(nuovo);
@@ -9513,6 +9636,8 @@ function salvaModificaPromemoria(id){
 document.addEventListener("input", function(ev){
   if(ev.target && ev.target.id === "pm-cerca"){
     VISTA_PROMEMORIA.cerca = ev.target.value;
+    /* quello che si sta scrivendo nel promemoria nuovo non si perde */
+    if(VISTA_PROMEMORIA.bozza && document.getElementById("pm-titolo")) VISTA_PROMEMORIA.bozza = campiPromemoria(VISTA_PROMEMORIA.bozza);
     disegnaPromemoria();
   }
 });
@@ -9532,6 +9657,16 @@ document.addEventListener("click", function(ev){
   }
   else if(c === "pm-modifica"){ VISTA_PROMEMORIA.modifica = id; VISTA_PROMEMORIA.elimina = ""; disegnaPromemoria(); }
   else if(c === "pm-annulla"){ VISTA_PROMEMORIA.modifica = ""; disegnaPromemoria(); }
+  else if(c === "pm-salva-bozza" && VISTA_PROMEMORIA.bozza){
+    var bz = campiPromemoria(VISTA_PROMEMORIA.bozza);
+    /* un passaggio dello stesso documento non prende il posto del testo intero */
+    bz.id = "promemoria-" + Date.now().toString(36);
+    VISTA_PROMEMORIA.bozza = null;
+    VISTA_PROMEMORIA.aperto = bz.id;
+    salvaPromemoria(bz);
+    notaFlash("Conservato fra i promemoria.");
+  }
+  else if(c === "pm-annulla-bozza"){ VISTA_PROMEMORIA.bozza = null; disegnaPromemoria(); }
   else if(c === "pm-salva") salvaModificaPromemoria(id);
   else if(c === "pm-elimina"){ VISTA_PROMEMORIA.elimina = id; disegnaPromemoria(); }
   else if(c === "pm-elimina-no"){ VISTA_PROMEMORIA.elimina = ""; disegnaPromemoria(); }
@@ -9547,6 +9682,717 @@ document.addEventListener("click", function(ev){
     copiaTesto(b.dataset.formula !== undefined ? (formuleDi(cap)[Number(b.dataset.formula)] || "") : cap);
   }
 });
+
+/* ===== guida.js =================================================== */
+/* ============================================================
+   QUANDO LA LETTURA AUTOMATICA NON BASTA
+   Il docente completa da sé il lavoro delle regole, dentro la
+   pagina, senza toccare il codice:
+   - ogni voce proposta si corregge in tutti i campi prima della
+     conferma, e la correzione resta anche se il documento viene
+     riletto, finché la voce non è confermata o scartata;
+   - dal testo del documento, mostrato riga per riga, un passaggio
+     selezionato diventa una voce nuova o un suo campo, oppure un
+     promemoria;
+   - quando la lettura non dà voci, o le dà incomplete, l'agenda lo
+     dice e apre l'inserimento guidato;
+   - una scansione, che non ha testo, offre comunque una voce e un
+     promemoria da compilare a mano.
+   Una voce di organo collegiale corretta o scritta a mano porta la
+   stessa convocazione di quella letta, costruita da convocazionePer.
+   ============================================================ */
+
+/* i tipi di voce che il docente può scegliere: sono le categorie delle
+   regole, che danno l'identificativo e il titolo canonico */
+var GENERI_VOCE = [
+  ["consiglio-classe", "Consiglio di classe"],
+  ["collegio", "Collegio dei Docenti"],
+  ["consiglio-istituto", "Consiglio d'Istituto"],
+  ["dipartimenti", "Riunione di dipartimento"],
+  ["glo", "GLO"],
+  ["gli", "GLI"],
+  ["ricevimento", "Ricevimento dei genitori"],
+  ["scrutinio", "Scrutinio"],
+  ["uscita", "Uscita didattica"],
+  ["formazione", "Corso di formazione"],
+  ["commissioni", "Commissioni e gruppi di lavoro"],
+  ["scadenza", "Scadenza"],
+  ["comunicazione", "Comunicazione"],
+  ["altro", "Altro impegno"],
+  ["sospensione", "Sospensione delle attività (calendario)"],
+  ["festivita", "Festività (calendario)"],
+  ["inizio-lezioni", "Inizio delle lezioni (calendario)"],
+  ["fine-lezioni", "Termine delle lezioni (calendario)"]
+];
+var CON_CONVOCAZIONE = {"consiglio-classe": 1, "consiglio-istituto": 1, "glo": 1, "gli": 1};
+/* le sedute che si aspettano un orario, e quelle che si aspettano una classe */
+var VOGLIONO_ORA = {"consiglio-classe": 1, "collegio": 1, "consiglio-istituto": 1, "dipartimenti": 1,
+                    "glo": 1, "gli": 1, "ricevimento": 1, "scrutinio": 1, "formazione": 1, "commissioni": 1};
+var VOGLIONO_CLASSE = {"consiglio-classe": 1, "glo": 1, "scrutinio": 1};
+var MODALITA_TESTO = {presenza: "Seduta in presenza", distanza: "Seduta a distanza", mista: "Seduta in modalità mista"};
+
+function dueOre(s){
+  var m = String(s || "").match(/^(\d{1,2}):(\d{2})$/);
+  return m ? ("0" + m[1]).slice(-2) + ":" + m[2] : "";
+}
+
+/* ---------- dalla voce ai campi, e ritorno ---------- */
+/* I dettagli di una voce letta portano, una per riga, l'orario («Ore
+   15:00-17:00.»), la modalità e il luogo («Seduta in presenza, presso …»),
+   il link della riunione, il protocollo e i punti numerati dell'ordine del
+   giorno: ciascuno torna nel suo campo, e il resto resta nei dettagli. */
+function campiDaVoce(v){
+  var c = {titolo: v.titolo || "", categoria: v.categoria || categoriaDiVoce(v) || "altro", data: v.data || "",
+           ora: "", oraFine: dueOre(v.oraFine), classi: v.classe || "", luogo: "", modalita: "", link: "",
+           dettagli: "", odg: [], fonte: v.fonte || "", circolare: "", protocollo: "", protData: "",
+           genitori: false, studenti: false, puntiRapp: ""};
+  var resto = [], m;
+  String(v.dettagli || "").split("\n").forEach(function(r){
+    var t = r.replace(/\s+$/, "");
+    if(!c.ora && (m = t.match(/^Ore (\d{1,2}:\d{2})(?:-(\d{1,2}:\d{2}))?\.$/))){
+      c.ora = dueOre(m[1]); if(m[2]) c.oraFine = dueOre(m[2]); return;
+    }
+    if((m = t.match(/^Seduta (in presenza|a distanza|in modalità mista)(?:, presso (.+))?\.$/))){
+      c.modalita = {"in presenza": "presenza", "a distanza": "distanza", "in modalità mista": "mista"}[m[1]];
+      if(m[2]) c.luogo = m[2];
+      return;
+    }
+    if((m = t.match(/^(?:Presso|Luogo:) (.+)\.$/))){ c.luogo = m[1]; return; }
+    if((m = t.match(/^Link della riunione: (\S+)/))){ c.link = m[1]; return; }
+    if((m = t.match(/^Prot\. (\S+)(?: del (\d{2}\/\d{2}\/\d{4}))?\.$/))){ c.protocollo = m[1]; c.protData = m[2] || ""; return; }
+    if((m = t.match(/^(\d{1,2})[.)]\s+(.+)$/))){ c.odg.push({testo: m[2], sotto: []}); return; }
+    if(c.odg.length && (m = t.match(/^\s+[a-z][.)]\s+(.+)$/))){ c.odg[c.odg.length - 1].sotto.push(m[1]); return; }
+    resto.push(t);
+  });
+  c.dettagli = resto.join("\n").trim();
+  var conv = v.convocazione;
+  if(conv){
+    if(conv.odg && conv.odg.length) c.odg = conv.odg.map(function(x){ return {testo: x.testo, sotto: (x.sotto || []).slice()}; });
+    if(!c.modalita && conv.modalita) c.modalita = conv.modalita;
+    if(!c.link && conv.meet && conv.meet !== String(stato.config.meet || "")) c.link = conv.meet;
+    if(conv.protocollo) c.protocollo = conv.protocollo;
+    if(conv.protGiorno) c.protData = conv.protGiorno + "/" + conv.protMese + "/20" + conv.protAnno;
+    if(conv.circolare) c.circolare = conv.circolare;
+    if(conv.rappresentanti){
+      c.genitori = !!conv.rappresentanti.genitori;
+      c.studenti = !!conv.rappresentanti.studenti;
+      c.puntiRapp = conv.rappresentanti.punti || "";
+    }
+  }
+  if(!c.circolare && (m = c.fonte.match(/Circ\.\s*n\.\s*(\d+)/))) c.circolare = m[1];
+  return c;
+}
+
+/* le classi scritte a mano, «5a, 5B e 4 c», come le scrive l'agenda */
+function classiDaCampo(t){
+  var out = [];
+  String(t || "").split(/\s*(?:[,;\/]|\be\b)\s*/).forEach(function(x){
+    var m = x.trim().match(/^(\d)\s*[°ª^]?\s*-?\s*([A-Za-z]{1,4})$/);
+    if(!m) return;
+    var c = classeDelDocente(m[1] + m[2].toUpperCase());
+    if(out.indexOf(c) < 0) out.push(c);
+  });
+  return ordinaClassi(out, stato.config.classi || []);
+}
+
+function voceDaCampi(c, base){
+  var v = base ? JSON.parse(JSON.stringify(base)) : {id: "", materia: "", alunni: "", durata: 0, link: "", stato: ""};
+  var prima = base ? base.tipo : "";
+  v.categoria = c.categoria || "altro";
+  v.tipo = TIPO_CALENDARIO[v.categoria] ? "calendario" : "impegno";
+  if(!v.stato || prima !== v.tipo) v.stato = v.tipo === "calendario" ? "previsto" : "da fare";
+  v.data = c.data || "";
+  v.periodo = periodoDa(v.data);
+  v.ora = "";
+  var cl = classiDaCampo(c.classi);
+  v.classe = cl.join(", ");
+  v.titolo = String(c.titolo || "").replace(/\s+/g, " ").trim() ||
+             titoloVoce(v.categoria, "", cl, !CON_CLASSI[v.categoria]) || "Impegno";
+  v.fonte = c.fonte || (c.circolare ? "Circ. n. " + c.circolare : "");
+  v.oraFine = c.oraFine || "";
+  var d = [];
+  if(c.ora) d.push("Ore " + c.ora + (c.oraFine ? "-" + c.oraFine : "") + ".");
+  var mod = MODALITA_TESTO[c.modalita] || "";
+  if(mod) d.push(mod + (c.luogo ? ", presso " + c.luogo : "") + ".");
+  else if(c.luogo) d.push("Presso " + c.luogo + ".");
+  if(c.link) d.push("Link della riunione: " + c.link);
+  if(c.protocollo && !CON_CONVOCAZIONE[v.categoria]) d.push("Prot. " + c.protocollo + (c.protData ? " del " + c.protData : "") + ".");
+  if(String(c.dettagli || "").trim()) d.push(String(c.dettagli).trim());
+  (c.odg || []).forEach(function(p, k){
+    d.push((k + 1) + ". " + p.testo);
+    (p.sotto || []).forEach(function(s, j){ d.push("  " + String.fromCharCode(97 + j) + ". " + s); });
+  });
+  v.dettagli = d.join("\n");
+  var vecchia = base && base.convocazione;
+  if(CON_CONVOCAZIONE[v.categoria]){
+    var dati = {ora: c.ora, protocollo: c.protocollo, protData: c.protData, circolare: c.circolare,
+                modalita: c.modalita, link: c.link, odg: c.odg,
+                fase: (vecchia && vecchia.fase) || faseDelGlo(v.titolo, c.dettagli)};
+    if(c.rappToccati || !STATO_IMPORT.testo) dati.rappresentanti = {genitori: c.genitori, studenti: c.studenti, punti: c.puntiRapp};
+    else dati.regoleRappresentanti = leggiRappresentanti(STATO_IMPORT.testo);
+    var conv = convocazionePer(v, dati, stato.config);
+    if(conv && vecchia){
+      ["numeroVerbale", "integrazione", "presidenza"].forEach(function(k){ if(vecchia[k] !== undefined) conv[k] = vecchia[k]; });
+    }
+    if(conv) v.convocazione = conv; else delete v.convocazione;
+  }else delete v.convocazione;
+  return v;
+}
+
+/* ---------- le voci da completare ---------- */
+function titoloSpezzato(t){
+  t = String(t || "").trim();
+  return /\s[,.;:](\s|$)/.test(t) || /…$/.test(t) || /^[a-zà-ú]/.test(t) ||
+         /\s(?:di|del|della|dei|delle|a|al|alla|alle|ai|le|il|lo|la|i|gli|e|ed|in|con|per|su|da|presso|ore|entro|è)$/i.test(t);
+}
+function problemiVoce(v){
+  var p = [];
+  if(v.tipo === "impegno" && VOGLIONO_ORA[v.categoria] && !/^Ore \d/m.test(v.dettagli || "")) p.push("senza ora");
+  if(VOGLIONO_CLASSE[v.categoria] && !String(v.classe || "").trim()) p.push("senza classe");
+  if(titoloSpezzato(v.titolo)) p.push("titolo con frammenti di frase");
+  return p;
+}
+/* la riga che dice al docente che la lettura non basta */
+function avvisoLettura(L){
+  if(!L || ["nomina", "delega", "composizione", "integrazione"].indexOf(STATO_IMPORT.tipoDoc) >= 0) return "";
+  if(STATO_IMPORT.fase === "fatto" && (STATO_IMPORT.scritte || []).length) return "";
+  if(!L.voci.length){
+    STATO_IMPORT.guidato = true;
+    return '<div class="avviso avviso-lettura">La lettura non ha ricavato nessuna voce: se il documento ne contiene, ' +
+           'creale dal testo con l\'inserimento guidato, qui sotto.</div>';
+  }
+  var conti = {}, quante = 0;
+  L.voci.forEach(function(v){
+    if(v.categoria === "comunicazione") return;
+    var p = problemiVoce(v);
+    if(p.length) quante++;
+    p.forEach(function(x){ conti[x] = (conti[x] || 0) + 1; });
+  });
+  if(!quante) return "";
+  STATO_IMPORT.guidato = true;
+  return '<div class="avviso avviso-lettura">La lettura è incompleta: ' + quante +
+         (quante === 1 ? ' voce da completare' : ' voci da completare') + ' (' +
+         Object.keys(conti).map(function(k){ return k + ": " + conti[k]; }).join("; ") +
+         '). Correggile con «Correggi», o completale dal testo con l\'inserimento guidato.</div>';
+}
+
+/* ---------- le correzioni restano finché la voce non è confermata ---------- */
+var CHIAVE_CORREZIONI = "agenda-correzioni";
+function chiaveDocumento(){
+  var t = STATO_IMPORT.testo ? STATO_IMPORT.testo : "file:" + (STATO_IMPORT.nomeFile || ""), h = 5381, i;
+  for(i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
+  return "doc-" + h.toString(36) + "-" + t.length;
+}
+function leggiCorrezioni(){
+  try{ return JSON.parse(localStorage.getItem(CHIAVE_CORREZIONI) || "{}") || {}; }catch(e){ return {}; }
+}
+function scriviCorrezioni(tutte){
+  try{ localStorage.setItem(CHIAVE_CORREZIONI, JSON.stringify(tutte)); }catch(e){}
+}
+function chiaveProposta(v){ return idVoceDaLettura(v) + "|" + (v.titolo || ""); }
+function memorizzaCorrezioni(){
+  var L = STATO_IMPORT.lettura;
+  if(!L) return;
+  var tutte = leggiCorrezioni(), k = chiaveDocumento(), mie = {corrette: {}, nuove: [], quando: Date.now()};
+  L.voci.forEach(function(v){
+    if(v.corretta && v.chiaveOrig) mie.corrette[v.chiaveOrig] = v;
+    else if(v.aMano) mie.nuove.push(v);
+  });
+  if(Object.keys(mie.corrette).length || mie.nuove.length) tutte[k] = mie; else delete tutte[k];
+  scriviCorrezioni(tutte);
+}
+function dimenticaCorrezioni(){
+  var tutte = leggiCorrezioni();
+  delete tutte[chiaveDocumento()];
+  scriviCorrezioni(tutte);
+}
+/* chiamata dalla lettura, appena le regole hanno dato le loro voci */
+function applicaCorrezioni(lettura){
+  var mie = leggiCorrezioni()[chiaveDocumento()];
+  if(!mie) return;
+  lettura.voci = lettura.voci.map(function(v){
+    var c = mie.corrette[chiaveProposta(v)];
+    return c ? JSON.parse(JSON.stringify(c)) : v;
+  }).concat((mie.nuove || []).map(function(v){ return JSON.parse(JSON.stringify(v)); }));
+}
+
+/* ---------- la voce in modifica ---------- */
+function documentoLetto(){
+  var L = STATO_IMPORT.lettura, d = (L && L.documento) || {};
+  /* senza timbro, il protocollo scritto nel testo prima dell'oggetto */
+  var nelTesto = {numero: "", data: ""};
+  if(!d.protocollo && !(STATO_IMPORT.prot || {}).numero && STATO_IMPORT.testo){
+    var righe = righeDelTesto(), fino = righe.length, i;
+    for(i = 0; i < righe.length; i++) if(/^\s*OGGETTO\s*:/i.test(righe[i])){ fino = i; break; }
+    nelTesto = protocolloNelTesto(righe, Math.min(fino, 40));
+    var md = nelTesto.data.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(md) nelTesto.data = ("0" + md[1]).slice(-2) + "/" + ("0" + md[2]).slice(-2) + "/" + md[3];
+  }
+  return {
+    fonte: d.fonte || STATO_IMPORT.nomeFile || "",
+    circolare: d.circolare || "",
+    protocollo: d.protocollo || (STATO_IMPORT.prot || {}).numero || nelTesto.numero,
+    protData: d.protData || (STATO_IMPORT.prot || {}).data || nelTesto.data,
+    organo: d.organoChiave || "",
+    modalita: d.modalita || "",
+    luogo: d.luogo || ""
+  };
+}
+function campiNuovi(){
+  var d = documentoLetto();
+  var c = campiDaVoce({titolo: "", categoria: d.organo || "altro", data: "", dettagli: "", fonte: d.fonte});
+  c.circolare = d.circolare; c.protocollo = d.protocollo; c.protData = d.protData;
+  c.modalita = d.modalita; c.luogo = d.luogo;
+  if(c.categoria === "consiglio-classe" && STATO_IMPORT.testo){
+    var r = rappresentantiPer(leggiRappresentanti(STATO_IMPORT.testo), "");
+    c.genitori = r.genitori; c.studenti = r.studenti; c.puntiRapp = r.punti;
+  }
+  return c;
+}
+/* una lettura vuota, per i documenti che non ne hanno una: le voci scritte
+   a mano passano dalla stessa conferma */
+function letturaVuota(){
+  return {documento: {circolare: null, oggetto: null, organo: null, organoChiave: null, protocollo: "", protData: "",
+                      destinatari: [], riguardaIlDocente: true, modalita: "", luogo: "",
+                      fonte: STATO_IMPORT.nomeFile || "Documento della scuola", seduta: null},
+          date: [], orari: [], odg: [], voci: [], scartate: [], righeNonUsate: []};
+}
+function apriModifica(indice, campi){
+  var L = STATO_IMPORT.lettura;
+  if(!L){ L = STATO_IMPORT.lettura = letturaVuota(); STATO_IMPORT.spuntate = {}; STATO_IMPORT.piani = {}; STATO_IMPORT.gia = {}; }
+  STATO_IMPORT.modifica = {
+    indice: indice,
+    campi: campi || (indice >= 0 ? campiDaVoce(L.voci[indice]) : campiNuovi())
+  };
+}
+/* quello che il docente ha scritto nei campi torna nello stato prima di ogni comando */
+function leggiFormVoce(){
+  var M = STATO_IMPORT.modifica;
+  if(!M || !document.getElementById("vm-titolo")) return;
+  var c = M.campi;
+  function val(id){ var e = document.getElementById(id); return e ? e.value : ""; }
+  c.titolo = val("vm-titolo"); c.categoria = val("vm-categoria") || c.categoria; c.data = val("vm-data");
+  c.ora = val("vm-ora"); c.oraFine = val("vm-orafine"); c.classi = val("vm-classi");
+  c.luogo = val("vm-luogo").trim(); c.modalita = val("vm-modalita"); c.link = val("vm-link").trim();
+  c.circolare = val("vm-circolare").trim(); c.protocollo = val("vm-protocollo").trim(); c.protData = val("vm-protdata").trim();
+  c.dettagli = val("vm-dettagli");
+  if(document.getElementById("vm-genitori")){
+    c.genitori = document.getElementById("vm-genitori").checked;
+    c.studenti = document.getElementById("vm-studenti").checked;
+    c.puntiRapp = val("vm-punti-rapp").trim();
+  }
+  var testi = Array.prototype.map.call(document.querySelectorAll(".vm-punto"), function(e){ return e.value; });
+  c.odg = testi.map(function(t, k){ return {testo: t, sotto: ((c.odg[k] || {}).sotto || [])}; });
+}
+function salvaModifica(){
+  leggiFormVoce();
+  var M = STATO_IMPORT.modifica, L = STATO_IMPORT.lettura;
+  if(!M || !L) return false;
+  var c = M.campi;
+  c.odg = c.odg.filter(function(p){ return String(p.testo || "").trim(); })
+               .map(function(p){ return {testo: p.testo.trim(), sotto: p.sotto || []}; });
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(c.data || "")){ notaFlash("Manca la data della voce: scrivila, o seleziona nel testo la riga che la dice e premi «Data»."); return false; }
+  var base = M.indice >= 0 ? L.voci[M.indice] : null;
+  var v = voceDaCampi(c, base);
+  if(base){
+    v.corretta = true;
+    v.chiaveOrig = base.chiaveOrig || chiaveProposta(base);
+    L.voci[M.indice] = v;
+  }else{
+    v.aMano = true;
+    L.voci.push(v);
+  }
+  var i = M.indice >= 0 ? M.indice : L.voci.length - 1;
+  STATO_IMPORT.spuntate[i] = true;
+  STATO_IMPORT.piani = STATO_IMPORT.piani || {};
+  STATO_IMPORT.gia = STATO_IMPORT.gia || {};
+  var piano = pianoVoce(v, STATO_IMPORT.riferimento || null);
+  STATO_IMPORT.piani[i] = piano;
+  STATO_IMPORT.gia[i] = piano.voci.map(function(x){ return x.titolo; }).join("; ");
+  STATO_IMPORT.modifica = null;
+  STATO_IMPORT.fase = "conferma";
+  memorizzaCorrezioni();
+  return true;
+}
+
+/* ---------- il testo del documento, riga per riga ---------- */
+function righeDelTesto(){ return String(STATO_IMPORT.testo || "").split(/\r?\n/); }
+/* il passaggio scelto: la selezione del browser, se c'è, altrimenti le righe toccate */
+function passaggioScelto(){
+  if(STATO_IMPORT.selTesto) return STATO_IMPORT.selTesto;
+  var s = STATO_IMPORT.selRighe;
+  if(!s) return "";
+  return righeDelTesto().slice(s.da, s.a + 1).join("\n").trim();
+}
+function anniPerLaLettura(){
+  var anni = anniScolastici(stato.config.anno);
+  var d = documentoLetto(), m = String(d.protData || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  anni.dopo = m ? m[3] + "-" + m[2] + "-" + m[1] : riferimentoSenzaProtocollo(oggiISO());
+  return anni;
+}
+/* «Ordine del giorno»: i punti secondo la numerazione, oppure riga per riga.
+   Le lettere sotto un punto numerato ne sono i sottopunti; le righe che
+   annunciano l'elenco, chiuse dai due punti, restano fuori. */
+var RE_SEGNO_PUNTO = /^\s*(?:(\d{1,2})\s*[.)]|(\d{1,2})\s+-|([a-z])\s*[.)]|[•●▪◦‣∙·*\-–—]|[-])\s*/i;
+function puntiDaTesto(t){
+  var righe = String(t || "").split(/\r?\n/).map(function(r){ return r.trim(); }).filter(Boolean);
+  if(!righe.some(function(r){ return RE_SEGNO_PUNTO.test(r); }))
+    return righe.map(function(r){ return {testo: r, sotto: []}; });
+  var cifre = righe.some(function(r){ var m = r.match(RE_SEGNO_PUNTO); return m && (m[1] || m[2]); });
+  var punti = [], iniziato = false;
+  righe.forEach(function(r){
+    var m = r.match(RE_SEGNO_PUNTO);
+    if(m){
+      var testo = r.slice(m[0].length).trim();
+      iniziato = true;
+      if(cifre && m[3] && punti.length) punti[punti.length - 1].sotto.push(testo);
+      else punti.push({testo: testo, sotto: []});
+      return;
+    }
+    if(!iniziato){ if(!/:\s*$/.test(r)) punti.push({testo: r, sotto: []}); iniziato = !/:\s*$/.test(r); return; }
+    var ultimo = punti[punti.length - 1];
+    if(ultimo.sotto.length) ultimo.sotto[ultimo.sotto.length - 1] += " " + r;
+    else ultimo.testo += " " + r;
+  });
+  return punti;
+}
+
+/* ---------- i comandi dell'inserimento guidato ---------- */
+/* il passaggio scelto dice una data o un'ora anche in forme che le regole
+   del documento non usano, «19.11.2026», «h 14,30»: il docente l'ha indicato */
+function dataDaPassaggio(t){
+  var d = trovaDate(t, anniPerLaLettura(), {mese: 0}).filter(function(x){ return !x.fine; });
+  if(d.length) return d[0].iso;
+  var m = String(t).match(/\b(\d{1,2})[.\s](\d{1,2})[.\s](\d{4}|\d{2})\b/);
+  if(m){
+    var a = annoPieno(m[3]), me = Number(m[2]), g = Number(m[1]);
+    if(dataValida(a, me, g)) return isoData(a, me, g);
+  }
+  return "";
+}
+function orariDaPassaggio(t){
+  var oo = trovaOrari(t);
+  if(oo.length) return oo;
+  var senzaDate = String(t).replace(/\b\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}\b/g, " ");
+  var re = /(?:^|[^\d])(\d{1,2})[.,:](\d{2})(?!\d)/g, m, out = [];
+  while((m = re.exec(senzaDate))){
+    if(Number(m[1]) < 24 && Number(m[2]) < 60) out.push({ora: ("0" + m[1]).slice(-2) + ":" + m[2], fine: out.length > 0});
+  }
+  if(out.length) return out;
+  var mo = senzaDate.match(/\b(?:ore|alle|h\.?)\s*(\d{1,2})\b(?![.:,]\d)/i);
+  return mo && Number(mo[1]) < 24 ? [{ora: ("0" + mo[1]).slice(-2) + ":00", fine: false}] : [];
+}
+function senzaOggetto(t){ return String(t || "").replace(/\s+/g, " ").replace(/^\s*oggetto\s*:\s*/i, "").trim(); }
+
+function apriSelettore(id){
+  var e = document.getElementById(id);
+  if(!e) return;
+  e.focus();
+  try{ if(e.showPicker) e.showPicker(); }catch(x){}
+}
+function comandoGuida(c){
+  var t = passaggioScelto();
+  if(t) STATO_IMPORT.selUsata = true;
+  var M = STATO_IMPORT.modifica;
+  if(M) leggiFormVoce();
+  if(c === "g-promemoria"){
+    if(!t){ notaFlash("Seleziona prima nel testo il passaggio da conservare."); return; }
+    var d = documentoLetto(), L = STATO_IMPORT.lettura;
+    var s = STATO_IMPORT.selRighe, capoversi;
+    if(!STATO_IMPORT.selTesto && s){
+      var pos = STATO_IMPORT.posizioni && STATO_IMPORT.posizioni.testo === STATO_IMPORT.testo ? STATO_IMPORT.posizioni.righe : null;
+      capoversi = capoversiDi(righeDelTesto(), pos, s.da, s.a + 1);
+    }else capoversi = capoversiDi(t.split(/\r?\n/), null, 0, t.split(/\r?\n/).length);
+    VISTA_PROMEMORIA.bozza = {titolo: (L && L.documento.oggetto) || accorcia(t.split(/\n/)[0], 80),
+                              circolare: d.circolare, protocollo: d.protocollo, protData: d.protData,
+                              destinatari: [], capoversi: capoversi, fonte: STATO_IMPORT.nomeFile || ""};
+    cambiaVista("promemoria");
+    return;
+  }
+  if(c === "g-nuova" || !M){
+    apriModifica(-1);
+    M = STATO_IMPORT.modifica;
+    if(c === "g-nuova" && t){
+      M.campi.titolo = accorcia(senzaOggetto(t.split(/\n/)[0]), 80);
+      var dn = dataDaPassaggio(t);
+      if(dn) M.campi.data = dn;
+      var on = orariDaPassaggio(t);
+      on.forEach(function(o){ if(o.fine){ if(!M.campi.oraFine) M.campi.oraFine = o.ora; } else if(!M.campi.ora) M.campi.ora = o.ora; });
+    }
+  }
+  var cm = M.campi, aperto = "";
+  STATO_IMPORT.guidato = true;
+  if(c === "g-data"){
+    var dd = t ? dataDaPassaggio(t) : "";
+    if(dd) cm.data = dd; else aperto = "vm-data";
+  }else if(c === "g-ora"){
+    var oo = t ? orariDaPassaggio(t) : [];
+    if(oo.length){
+      cm.ora = ""; cm.oraFine = "";
+      oo.forEach(function(o){ if(o.fine){ if(!cm.oraFine) cm.oraFine = o.ora; } else if(!cm.ora) cm.ora = o.ora; else if(!cm.oraFine) cm.oraFine = o.ora; });
+    }else aperto = "vm-ora";
+  }else if(c === "g-titolo"){
+    if(t) cm.titolo = senzaOggetto(t); else aperto = "vm-titolo";
+  }else if(c === "g-classe"){
+    var trovate = t ? classiDaRiga(t, stato.config.classi || []).classi : [];
+    if(!trovate.length && t) trovate = classiDaCampo((t.match(/\b\d\s*[°ª^]?\s*[A-Z]{1,4}\b/g) || []).join(","));
+    if(trovate.length){
+      var gia = classiDaCampo(cm.classi);
+      trovate.forEach(function(x){ if(gia.indexOf(x) < 0) gia.push(x); });
+      cm.classi = ordinaClassi(gia, stato.config.classi || []).join(", ");
+    }else aperto = "vm-classi";
+  }else if(c === "g-luogo"){
+    if(t) cm.luogo = t.replace(/\s+/g, " ").replace(/^(?:presso|in|nel|nella|nell')\s+/i, "").replace(/[.;,]$/, "").trim();
+    else aperto = "vm-luogo";
+  }else if(c === "g-dettagli"){
+    if(t) cm.dettagli = (cm.dettagli ? cm.dettagli + "\n" : "") + t.replace(/[ \t]+/g, " ").trim(); else aperto = "vm-dettagli";
+  }else if(c === "g-odg"){
+    if(t) cm.odg = cm.odg.filter(function(p){ return String(p.testo || "").trim(); }).concat(puntiDaTesto(t));
+    else { cm.odg.push({testo: "", sotto: []}); }
+  }
+  disegna();
+  if(aperto) apriSelettore(aperto);
+}
+
+/* ---------- la selezione nel testo ---------- */
+/* Un tocco su una riga la sceglie; un secondo tocco su un'altra riga estende la
+   scelta fino a lì; un tocco sulla sola riga scelta la toglie. Una selezione
+   fatta trascinando, dove si può, vale così com'è. */
+/* Una scelta già passata a un comando non si estende più: il tocco dopo ne
+   comincia una nuova. */
+function toccaRiga(n){
+  var s = STATO_IMPORT.selUsata ? null : STATO_IMPORT.selRighe;
+  STATO_IMPORT.selTesto = "";
+  STATO_IMPORT.selUsata = false;
+  if(s && s.da === s.a && s.da === n) STATO_IMPORT.selRighe = null;
+  else if(s && s.da === s.a) STATO_IMPORT.selRighe = {da: Math.min(s.da, n), a: Math.max(s.da, n)};
+  else STATO_IMPORT.selRighe = {da: n, a: n};
+  segnaRigheScelte();
+}
+function segnaRigheScelte(){
+  var s = STATO_IMPORT.selRighe;
+  Array.prototype.forEach.call(document.querySelectorAll(".tg-riga"), function(r){
+    var n = Number(r.dataset.riga);
+    r.classList.toggle("scelta", !!s && n >= s.da && n <= s.a);
+  });
+  var e = document.getElementById("tg-scelta");
+  if(e) e.textContent = dicituraScelta();
+}
+function dicituraScelta(){
+  var s = STATO_IMPORT.selRighe;
+  if(STATO_IMPORT.selTesto) return "Selezionato: «" + accorcia(STATO_IMPORT.selTesto.replace(/\s+/g, " "), 60) + "»";
+  if(!s) return "Nessuna riga scelta: tocca una riga, poi un'altra per estendere.";
+  return s.da === s.a ? "Scelta la riga " + (s.da + 1) + "." : "Scelte le righe da " + (s.da + 1) + " a " + (s.a + 1) + ".";
+}
+document.addEventListener("selectionchange", function(){
+  var s = window.getSelection(), box = document.getElementById("testo-guida");
+  if(!s || !box || s.isCollapsed || !s.anchorNode || !box.contains(s.anchorNode)) return;
+  var t = s.toString().trim();
+  if(!t) return;
+  STATO_IMPORT.selTesto = t;
+  STATO_IMPORT.selRighe = null;
+  STATO_IMPORT.selUsata = false;
+  segnaRigheScelte();
+});
+
+/* ---------- il disegno ---------- */
+function campoVm(id, etichetta, valore, attr){
+  return '<div class="campo"><label for="' + id + '">' + etichetta + '</label>' +
+         '<input id="' + id + '" value="' + esc(valore || "") + '"' + (attr || "") + '></div>';
+}
+function schedaModificaVoce(){
+  var M = STATO_IMPORT.modifica, c = M.campi;
+  var h = '<div class="voce-modifica" id="voce-modifica"><h3>' +
+          (M.indice >= 0 ? 'Correggi la voce proposta' : 'Nuova voce dal documento') + '</h3>' +
+          '<p class="aiuto">La voce si scrive in agenda soltanto quando confermi. Per riempire un campo dal testo, ' +
+          'scegli il passaggio nel documento e usa i comandi accanto.</p><div class="vm-campi">';
+  h += '<div class="campo largo"><label for="vm-titolo">Titolo</label><input id="vm-titolo" value="' + esc(c.titolo) + '"></div>';
+  h += '<div class="campo"><label for="vm-categoria">Tipo</label><select id="vm-categoria">' +
+       GENERI_VOCE.map(function(g){ return '<option value="' + g[0] + '"' + (g[0] === c.categoria ? ' selected' : '') + '>' + esc(g[1]) + '</option>'; }).join("") +
+       '</select></div>';
+  h += campoVm("vm-data", "Data", c.data, ' type="date"');
+  h += campoVm("vm-ora", "Ora di inizio", c.ora, ' type="time"');
+  h += campoVm("vm-orafine", "Ora di fine", c.oraFine, ' type="time"');
+  h += campoVm("vm-classi", "Classe o classi", c.classi, ' list="lista-classi" placeholder="es. 5A, 5B"');
+  h += campoVm("vm-luogo", "Luogo", c.luogo);
+  h += '<div class="campo"><label for="vm-modalita">Modalità</label><select id="vm-modalita">' +
+       [["", "non indicata"], ["presenza", "in presenza"], ["distanza", "a distanza"], ["mista", "mista"]].map(function(o){
+         return '<option value="' + o[0] + '"' + (o[0] === (c.modalita || "") ? ' selected' : '') + '>' + o[1] + '</option>';
+       }).join("") + '</select></div>';
+  h += campoVm("vm-link", "Link della riunione", c.link, ' type="url" placeholder="https://…"');
+  h += campoVm("vm-circolare", "Circolare n.", c.circolare);
+  h += campoVm("vm-protocollo", "Protocollo", c.protocollo, ' inputmode="numeric"');
+  h += campoVm("vm-protdata", "Data del protocollo", c.protData, ' placeholder="gg/mm/aaaa"');
+  if(c.categoria === "consiglio-classe"){
+    h += '<fieldset class="campo largo vm-componenti"><legend>Componenti convocate oltre ai docenti</legend>' +
+         '<label><input type="checkbox" id="vm-genitori"' + (c.genitori ? ' checked' : '') + '> genitori</label> ' +
+         '<label><input type="checkbox" id="vm-studenti"' + (c.studenti ? ' checked' : '') + '> studenti</label>' +
+         '<label for="vm-punti-rapp" class="vm-punti-rapp">per i punti</label>' +
+         '<input id="vm-punti-rapp" value="' + esc(c.puntiRapp) + '" placeholder="es. 1, 2 e 3"></fieldset>';
+  }
+  h += '<div class="campo largo"><label for="vm-dettagli">Dettagli</label><textarea id="vm-dettagli" rows="3">' +
+       esc(c.dettagli) + '</textarea></div>';
+  h += '<div class="campo largo"><span class="etichetta-campo">Ordine del giorno</span>';
+  if(!c.odg.length) h += '<p class="aiuto">Nessun punto. Aggiungine uno, o seleziona l\'elenco nel testo e premi «Ordine del giorno».</p>';
+  h += '<ol class="vm-odg">';
+  c.odg.forEach(function(p, k){
+    h += '<li class="vm-riga-punto"><div><input class="vm-punto" id="vm-punto-' + k + '" aria-label="Punto ' + (k + 1) + '" value="' + esc(p.testo) + '">' +
+         ((p.sotto || []).length ? '<p class="aiuto vm-sotto">' + p.sotto.map(function(s, j){ return String.fromCharCode(97 + j) + ". " + esc(s); }).join("<br>") + '</p>' : '') +
+         '</div><span class="vm-cmd-punto">' +
+         '<button class="btn btn-piccolo" type="button" data-cmd="vm-su" data-k="' + k + '" aria-label="Sposta su il punto ' + (k + 1) + '"' + (k ? '' : ' disabled') + '>↑</button>' +
+         '<button class="btn btn-piccolo" type="button" data-cmd="vm-giu" data-k="' + k + '" aria-label="Sposta giù il punto ' + (k + 1) + '"' + (k < c.odg.length - 1 ? '' : ' disabled') + '>↓</button>' +
+         '<button class="btn btn-piccolo" type="button" data-cmd="vm-togli" data-k="' + k + '" aria-label="Togli il punto ' + (k + 1) + '">✕</button>' +
+         '</span></li>';
+  });
+  h += '</ol></div>';
+  h += '<div class="campo largo"><span class="etichetta-campo">Fonte</span><p class="aiuto">' + esc(c.fonte || "—") + '</p></div>';
+  return h + '</div></div>';
+}
+
+/* il testo intero, una riga per riga, da cui scegliere */
+function testoGuidato(){
+  if(!STATO_IMPORT.testo) return "";
+  var s = STATO_IMPORT.selRighe;
+  var h = '<details class="guida"' + (STATO_IMPORT.guidato || STATO_IMPORT.modifica || s ? ' open' : '') + '>' +
+          '<summary>Inserimento guidato: il testo del documento</summary>' +
+          '<p class="aiuto">Scegli un passaggio, trascinando oppure toccando una riga e poi un\'altra, e assegnalo con i ' +
+          'comandi della colonna: «Nuova voce», «Data», «Ora», «Titolo» e gli altri.</p>' +
+          '<p class="aiuto tg-scelta" id="tg-scelta">' + esc(dicituraScelta()) + '</p>' +
+          '<div class="testo-guida" id="testo-guida">';
+  righeDelTesto().forEach(function(r, n){
+    var dentro = s && n >= s.da && n <= s.a;
+    h += '<div class="tg-riga' + (r.trim() ? '' : ' tg-vuota') + (dentro ? ' scelta' : '') + '" data-riga="' + n + '">' +
+         '<span class="tg-n" aria-hidden="true">' + (n + 1) + '</span><span class="tg-t">' + esc(r) + '</span></div>';
+  });
+  return h + '</div></details>';
+}
+
+/* la colonna dei comandi della lettura */
+function comandiLettura(L){
+  var h = "", M = STATO_IMPORT.modifica;
+  if(M){
+    h += '<button class="btn btn-primary" type="button" data-cmd="vm-salva">' + (M.indice >= 0 ? 'Salva la correzione' : 'Aggiungi la voce') + '</button>' +
+         '<button class="btn" type="button" data-cmd="vm-aggiungi">Aggiungi un punto</button>' +
+         '<button class="btn" type="button" data-cmd="vm-annulla">Annulla</button>';
+  }else if(L && STATO_IMPORT.fase === "conferma"){
+    h += '<button class="btn btn-primary" type="button" data-cmd="scrivi-voci">Scrivi in agenda le voci spuntate</button>' +
+         '<button class="btn btn-piccolo" type="button" data-cmd="spunta-tutte">Spunta tutte</button>' +
+         '<button class="btn btn-piccolo" type="button" data-cmd="spunta-nessuna">Togli le spunte</button>' +
+         '<button class="btn" type="button" data-cmd="annulla-lettura">Lascia perdere</button>';
+  }
+  if(L && !M && (STATO_IMPORT.fase === "conferma" || STATO_IMPORT.fase === "fatto") && STATO_IMPORT.testo) h += comandoPromemoria(L);
+  if(STATO_IMPORT.fase === "senzaTesto" && !M){
+    h += '<button class="btn btn-primary" type="button" data-cmd="g-nuova">Nuova voce</button>' +
+         '<button class="btn" type="button" data-cmd="senza-promemoria">Promemoria</button>';
+  }
+  if(STATO_IMPORT.testo){
+    h += '<p class="comandi-titolo">Dal testo</p>';
+    [["g-nuova", "Nuova voce"], ["g-data", "Data"], ["g-ora", "Ora"], ["g-titolo", "Titolo"], ["g-classe", "Classe"],
+     ["g-luogo", "Luogo"], ["g-dettagli", "Dettagli"], ["g-odg", "Ordine del giorno"], ["g-promemoria", "Promemoria"]].forEach(function(x){
+      h += '<button class="btn btn-piccolo" type="button" data-cmd="' + x[0] + '">' + x[1] + '</button>';
+    });
+  }
+  return h;
+}
+
+/* il documento senza testo: si dice, e si offre di scrivere a mano */
+function schedaSenzaTesto(){
+  return '<div class="avviso avviso-lettura">In questo documento non c\'è testo da leggere: è una scansione o una ' +
+         'fotografia. Puoi comunque scrivere a mano una voce o un promemoria, con il nome del file come fonte.</div>';
+}
+
+/* ---------- gli eventi ---------- */
+document.addEventListener("change", function(ev){
+  var t = ev.target;
+  if(!t || !STATO_IMPORT.modifica) return;
+  if(t.id === "vm-categoria"){ leggiFormVoce(); disegna(); }
+  else if(t.id === "vm-genitori" || t.id === "vm-studenti" || t.id === "vm-punti-rapp") STATO_IMPORT.modifica.campi.rappToccati = true;
+});
+
+document.addEventListener("click", function(ev){
+  var riga = ev.target.closest(".tg-riga");
+  if(riga){
+    var s = window.getSelection();
+    if(s && !s.isCollapsed && s.toString().trim()) return;   /* una selezione trascinata vale com'è */
+    toccaRiga(Number(riga.dataset.riga));
+    return;
+  }
+  var b = ev.target.closest("[data-cmd]");
+  if(!b) return;
+  var c = b.dataset.cmd, L = STATO_IMPORT.lettura, M = STATO_IMPORT.modifica;
+  if(c === "correggi"){
+    if(M) leggiFormVoce();
+    apriModifica(Number(b.dataset.i));
+    disegna();
+    var e = document.getElementById("voce-modifica");
+    if(e) e.scrollIntoView({block: "start"});
+  }
+  else if(c === "scarta-correzione"){
+    var i = Number(b.dataset.i), v = L && L.voci[i];
+    if(!v) return;
+    if(v.aMano){
+      L.voci.splice(i, 1);
+      var sp = {};
+      L.voci.forEach(function(x, k){ sp[k] = STATO_IMPORT.spuntate[k < i ? k : k + 1]; });
+      STATO_IMPORT.spuntate = sp;
+      memorizzaCorrezioni();
+      if(!L.voci.length) STATO_IMPORT.fase = "fatto";
+      disegna();
+    }else{
+      v.corretta = false;
+      memorizzaCorrezioni();
+      leggiTestoARegole(STATO_IMPORT.testo, STATO_IMPORT.nomeFile);
+    }
+  }
+  else if(c === "vm-salva"){ if(salvaModifica()) disegna(); }
+  else if(c === "vm-annulla"){ STATO_IMPORT.modifica = null; disegna(); }
+  else if(M && (c === "vm-aggiungi" || c === "vm-su" || c === "vm-giu" || c === "vm-togli")){
+    leggiFormVoce();
+    var odg = M.campi.odg, k = Number(b.dataset.k), fuoco = "";
+    if(c === "vm-aggiungi"){ odg.push({testo: "", sotto: []}); fuoco = "vm-punto-" + (odg.length - 1); }
+    else if(c === "vm-togli") odg.splice(k, 1);
+    else{
+      var j = c === "vm-su" ? k - 1 : k + 1;
+      if(j >= 0 && j < odg.length){ var x = odg[k]; odg[k] = odg[j]; odg[j] = x; }
+    }
+    disegna();
+    if(fuoco){ var f = document.getElementById(fuoco); if(f) f.focus(); }
+  }
+  else if(/^g-(nuova|data|ora|titolo|classe|luogo|dettagli|odg|promemoria)$/.test(c)) comandoGuida(c);
+  else if(c === "g-da-data"){
+    var sc = L && L.scartate[Number(b.dataset.n)];
+    if(!sc) return;
+    if(M) leggiFormVoce();
+    apriModifica(-1);
+    var cm = STATO_IMPORT.modifica.campi, testo = String(sc.testo || "").replace(/\s+/g, " ").trim();
+    cm.data = sc.data || "";
+    cm.titolo = accorcia(testo, 80);
+    cm.dettagli = testo;
+    disegna();
+    var ed = document.getElementById("voce-modifica");
+    if(ed) ed.scrollIntoView({block: "start"});
+  }
+  else if(c === "senza-promemoria"){
+    VISTA_PROMEMORIA.bozza = {titolo: String(STATO_IMPORT.nomeFile || "Documento").replace(/\.[a-z0-9]+$/i, ""),
+                              circolare: "", protocollo: (STATO_IMPORT.prot || {}).numero || "",
+                              protData: (STATO_IMPORT.prot || {}).data || "", destinatari: [], capoversi: [],
+                              fonte: STATO_IMPORT.nomeFile || ""};
+    cambiaVista("promemoria");
+  }
+});
+
+/* La barra in alto resta ferma mentre la pagina scorre, e la sua altezza
+   cambia con la larghezza: le colonne dei comandi si fermano sotto di lei. */
+(function(){
+  var barra = document.querySelector(".topbar");
+  if(!barra) return;
+  function misura(){
+    document.documentElement.style.setProperty("--alto-testata", Math.ceil(barra.getBoundingClientRect().height) + "px");
+  }
+  misura();
+  if(window.ResizeObserver) new ResizeObserver(misura).observe(barra);
+  else window.addEventListener("resize", misura);
+})();
 
 /* ===== esportazioni.js ============================================ */
 /* ============ esportazioni ============ */
@@ -10606,7 +11452,7 @@ document.addEventListener("click", function(ev){
       disegna();
     }
     else if(c==="scrivi-voci") scriviVociConfermate();
-    else if(c==="annulla-lettura"){ STATO_IMPORT=statoImportVuoto(""); disegna(); }
+    else if(c==="annulla-lettura"){ dimenticaCorrezioni(); STATO_IMPORT=statoImportVuoto(""); disegna(); }
     else if(c==="salva-github"){
       var prop=((document.getElementById("in-gh-prop")||{}).value||"").trim();
       var arch=((document.getElementById("in-gh-arch")||{}).value||"").trim();
