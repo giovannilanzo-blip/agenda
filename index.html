@@ -161,6 +161,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .voce-menu[data-vista-menu="orario"]{--area:var(--acqua)}
 .voce-menu[data-vista-menu="documenti"]{--area:var(--bosco)}
 .voce-menu[data-vista-menu="impostazioni"]{--area:var(--prugna)}
+.tab[data-vista="promemoria"]{--area:var(--ocra)}
+.voce-menu[data-vista-menu="promemoria"]{--area:var(--ocra)}
 .view{--area:var(--accent)}
 #v-classi{--area:var(--indaco)}
 #v-elenco{--area:var(--pietra)}
@@ -654,6 +656,27 @@ dialog::backdrop{background:rgba(30,18,8,.5)}
 #att-docenti .spunta-riga{display:flex;gap:8px;align-items:baseline;overflow-wrap:anywhere}
 #att-docenti .spunta-riga .aiuto{font-size:11.5px}
 
+/* ---------- promemoria: i documenti conservati per intero ---------- */
+.pm-proposta{margin-top:14px;padding:12px 14px;border:1px dashed var(--line);border-radius:8px;background:var(--surface-2)}
+.pm-proposta p{margin:0 0 8px}
+.pm-voce{padding:12px 16px;border-top:1px solid var(--line-soft);min-width:0}
+.pm-voce:first-of-type{border-top:0}
+.pm-titolo{font-size:16px;margin:0 0 2px;overflow-wrap:anywhere}
+.pm-meta{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--faint);margin:0 0 6px}
+.pm-estratto{font-size:14px;color:var(--muted);margin:0 0 8px;overflow-wrap:anywhere}
+.pm-azioni{justify-content:flex-start;flex-wrap:wrap;gap:8px}
+.pm-testo{margin:8px 0 10px}
+.pm-dest{font-size:13.5px;color:var(--muted);margin:0 0 10px}
+.pm-capoverso{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start;padding:6px 0;border-top:1px solid var(--line-soft)}
+.pm-capoverso p{margin:0;white-space:pre-wrap;tab-size:6;overflow-wrap:anywhere;font-size:14.5px;line-height:1.5}
+.pm-formula{margin-left:16px;border-top:0;padding-top:0}
+.pm-formula p{font-style:italic}
+.pm-modifica .pm-campi{display:flex;flex-wrap:wrap;gap:10px}
+.pm-modifica textarea{width:100%;font:inherit}
+.pm-modifica .campo{margin-bottom:10px}
+#pm-cerca{width:100%;min-width:0}
+.btn-pericolo{color:var(--ossido);border-color:var(--ossido)}
+
 /* =======================================================
    ADATTAMENTO A SCHERMI STRETTI — telefono in verticale
    ======================================================= */
@@ -703,6 +726,11 @@ dialog::backdrop{background:rgba(30,18,8,.5)}
 
   .classi{grid-template-columns:1fr;gap:14px}
   .registro{grid-template-columns:minmax(0,1fr) 78px;gap:8px}
+  /* nei promemoria il testo vuole tutta la larghezza: la ricerca sale sopra */
+  .registro.promemoria-vista{grid-template-columns:minmax(0,1fr)}
+  .promemoria-vista .registro-comandi{order:-1;position:static}
+  .pm-voce{padding:12px 13px}
+  .pm-capoverso{gap:8px}
   .registro-comandi{top:8px;gap:6px}
   .registro-comandi .btn{font-size:12px;padding:7px 4px;min-height:44px;line-height:1.2}
   .registro .riga{padding:10px 8px 10px 6px;gap:8px;grid-template-columns:38px minmax(0,1fr)}
@@ -948,6 +976,7 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
     <button class="tab" role="tab" data-vista="approf" aria-selected="false">Chimico-ambientale</button>
     <button class="tab" role="tab" data-vista="orario" aria-selected="false">Orario</button>
     <button class="tab" role="tab" data-vista="documenti" aria-selected="false">Documenti</button>
+    <button class="tab" role="tab" data-vista="promemoria" aria-selected="false">Promemoria</button>
     <button class="tab" role="tab" data-vista="cartella" aria-selected="false">Cartella</button>
     <button class="tab" role="tab" data-vista="impostazioni" aria-selected="false">Impostazioni</button>
   </nav>
@@ -963,6 +992,7 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
   <section class="view" id="v-approf" hidden></section>
   <section class="view" id="v-orario" hidden></section>
   <section class="view" id="v-documenti" hidden></section>
+  <section class="view" id="v-promemoria" hidden></section>
   <section class="view" id="v-cartella" hidden></section>
   <section class="view" id="v-impostazioni" hidden></section>
 </main>
@@ -982,6 +1012,7 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
   <button class="voce-menu" type="button" data-vista-menu="approf">Sezione chimico-ambientale</button>
   <button class="voce-menu" type="button" data-vista-menu="orario">Orario</button>
   <button class="voce-menu" type="button" data-vista-menu="documenti">Documenti</button>
+  <button class="voce-menu" type="button" data-vista-menu="promemoria">Promemoria</button>
   <button class="voce-menu" type="button" data-vista-menu="cartella">Cartella</button>
   <button class="voce-menu" type="button" data-vista-menu="impostazioni">Impostazioni</button>
   <div class="cassetto-piede">
@@ -1674,6 +1705,7 @@ var stato = {
           civica:{fine1q:"2027-01-31", classi:{}}, approf:{fine1q:"", classi:{}}, coordina:[],
           orarioUrl:"https://www.aldonet.it/orario_v2/", orario:{}, orarioProvvisorio:true},
   monitoraggio:null,
+  promemoria:{},           /* id -> documento conservato per intero */
   cancellate:{},           /* id -> momento della cancellazione, per la fusione */
   aggiornatoArchivio:0,
   erroreArchivio:null,
@@ -1967,7 +1999,7 @@ function giorniDocumenti(){
    Le cancellazioni restano segnate perché la fusione con l'archivio remoto non
    faccia tornare indietro una voce eliminata qui. */
 function archivioVuoto(){
-  return {versione: 1, aggiornato: 0, voci: {}, config: {}, cancellate: {}};
+  return {versione: 1, aggiornato: 0, voci: {}, promemoria: {}, config: {}, cancellate: {}};
 }
 
 /* Vero quando in questo browser non c'è ancora niente: né voci né
@@ -1980,6 +2012,7 @@ function archivioLocaleVuoto(){
     var d = JSON.parse(raw);
     if(!d) return true;
     if(d.voci && Object.keys(d.voci).length) return false;
+    if(d.promemoria && Object.keys(d.promemoria).length) return false;
     if(d.config && (d.config.classi || []).length) return false;
     return true;
   }catch(e){ return true; }
@@ -1994,6 +2027,7 @@ function leggiLocale(){
   if(!dati) return;
 
   if(dati.voci) stato.voci = dati.voci;
+  stato.promemoria = dati.promemoria || {};
   if(dati.config) stato.config = Object.assign(stato.config, dati.config);
   stato.cancellate = dati.cancellate || {};
   stato.aggiornatoArchivio = dati.aggiornato || 0;
@@ -2019,6 +2053,7 @@ function scriviLocale(){
     versione: 1,
     aggiornato: Date.now(),
     voci: stato.voci,
+    promemoria: stato.promemoria || {},
     config: stato.config,
     cancellate: stato.cancellate || {}
   };
@@ -2107,6 +2142,20 @@ function fondiArchivi(a, b){
     esito.voci[k] = v;
   });
 
+  /* i promemoria si fondono allo stesso modo: vince il più recente, e uno
+     cancellato dopo l'ultima modifica resta cancellato */
+  var idp = {};
+  Object.keys(a.promemoria || {}).forEach(function(k){ idp[k] = true; });
+  Object.keys(b.promemoria || {}).forEach(function(k){ idp[k] = true; });
+  Object.keys(idp).forEach(function(k){
+    var pa = (a.promemoria || {})[k], pb = (b.promemoria || {})[k];
+    var p = (!pa) ? pb : (!pb) ? pa : ((pb.aggiornato || 0) > (pa.aggiornato || 0) ? pb : pa);
+    if(!p) return;
+    var quando = cancellate[k];
+    if(quando && quando >= (p.aggiornato || 0)) return;
+    if(quando) delete cancellate[k];
+    esito.promemoria[k] = p;
+  });
   esito.cancellate = cancellate;
   esito.config = configPiuRecente(a, b);
   dopoLePulizie(esito, a, b);
@@ -2389,6 +2438,7 @@ function leggiRemoto(impostazioni){
     try{ a = JSON.parse(testo); }catch(e){ throw new Error("il file remoto non è leggibile"); }
     if(!a || typeof a !== "object") a = archivioVuoto();
     a.voci = a.voci || {};
+    a.promemoria = a.promemoria || {};
     a.config = a.config || {};
     a.cancellate = a.cancellate || {};
     a.versione = a.versione || 1;
@@ -2420,19 +2470,21 @@ function archivioCorrente(){
     aggiornato: stato.aggiornatoArchivio || Date.now(),
     cancellate: stato.cancellate || {},
     voci: stato.voci,
+    promemoria: stato.promemoria || {},
     config: stato.config
   };
 }
 
 function applicaArchivio(a){
   stato.voci = a.voci || {};
+  stato.promemoria = a.promemoria || {};
   stato.config = Object.assign(stato.config, a.config || {});
   stato.cancellate = a.cancellate || {};
   sistemaVoci();
   try{
     localStorage.setItem(CHIAVE_LOCALE, JSON.stringify({
       versione: 1, aggiornato: a.aggiornato || Date.now(),
-      cancellate: stato.cancellate, voci: stato.voci, config: stato.config
+      cancellate: stato.cancellate, voci: stato.voci, promemoria: stato.promemoria, config: stato.config
     }));
     stato.erroreArchivio = null;
   }catch(e){
@@ -3317,6 +3369,7 @@ function disegna(){
   else if(stato.vista==="elenco") disegnaElenco();
   else if(stato.vista==="orario") disegnaOrario();
   else if(stato.vista==="documenti") disegnaDocumenti();
+  else if(stato.vista==="promemoria") disegnaPromemoria();
   else if(stato.vista==="cartella") disegnaCartella();
   else if(registroDiVista(stato.vista)) disegnaRegistro(registroDiVista(stato.vista));
   else disegnaImpostazioni();
@@ -4715,8 +4768,9 @@ function trovaDate(riga, anni, contesto){
     coppia(b1, b2, m.index, m.index + m[0].length, m[0]);
   }
 
-  /* 5. data per esteso: giovedì 3 settembre 2026, il 9 settembre p.v. */
-  re = new RegExp("(?:(" + RE_GSETT + ")\\s+)?\\b(\\d{1,2})\\s+(" + RE_MESE + ")(?:\\s+(\\d{4}))?\\b", "gi");
+  /* 5. data per esteso: giovedì 3 settembre 2026, il 9 settembre p.v.,
+        e il primo del mese scritto «1° dicembre» */
+  re = new RegExp("(?:(" + RE_GSETT + ")\\s+)?\\b(\\d{1,2})(?:\\s*[°º])?\\s+(" + RE_MESE + ")(?:\\s+(\\d{4}))?\\b", "gi");
   while((m = re.exec(t))){
     var mm5 = MESI_NOME.indexOf(m[3].toLowerCase()) + 1;
     var aa5 = m[4] ? Number(m[4]) : annoPerMese(mm5, anni, Number(m[2]));
@@ -4849,11 +4903,13 @@ function rigaDiClassi(riga, date){
 /* ---------- numero di circolare ---------- */
 /* Si cerca in tutto il documento e vale la prima occorrenza: quando la
    circolare porta in testa un allegato, come l'elenco dei corsisti della
-   circolare 31, l'intestazione scende ben oltre le prime righe. */
+   circolare 31, l'intestazione scende ben oltre le prime righe.
+   Il numero si annuncia in più modi: «n.», «n°», «nº», «n.ro», «nr.». */
+var RE_CIRCOLARE = /\bCirc(?:olare)?\.?\s*n(?:\.?\s*ro|r|\.?\s*[°º])?\.?\s*0*(\d{1,3})\b/i;
 function trovaCircolare(righe){
   var i, m;
   for(i = 0; i < righe.length; i++){
-    m = normalizzaTesto(righe[i]).match(/\bCirc(?:olare)?\.?\s*n\.?\s*0*(\d{1,3})\b/i);
+    m = normalizzaTesto(righe[i]).match(RE_CIRCOLARE);
     if(m) return String(Number(m[1]));
   }
   return null;
@@ -5061,10 +5117,20 @@ var RE_ODG = new RegExp(spezzata("ordine del giorno"));
 var RE_SEGUENTE = new RegExp(spezzata("seguent") + " ?[ei]");
 function trovaOdg(righe){
   var i, inizio = -1;
+  function annuncia(t){
+    return (RE_ODG.test(t) && RE_SEGUENTE.test(t)) ||
+           (/o\.?\s?d\.?\s?g\.?/.test(t) && /seguent[ei]\s+punti/.test(t));
+  }
   for(i = 0; i < righe.length; i++){
     var t = senzaAccenti(righe[i]);
-    if(RE_ODG.test(t) && RE_SEGUENTE.test(t)){ inizio = i + 1; break; }
-    if(/o\.?\s?d\.?\s?g\.?/.test(t) && /seguent[ei]\s+punti/.test(t)){ inizio = i + 1; break; }
+    if(annuncia(t)){ inizio = i + 1; break; }
+    /* l'annuncio va spesso a capo: «per trattare e deliberare sui seguenti
+       punti all'ordine» / «del giorno:». Si ricompone con la riga piena che
+       segue, e l'elenco comincia dopo quella. */
+    var k = i + 1;
+    while(k < righe.length && !righe[k].trim()) k++;
+    if(k < righe.length && !/^\s*\d{1,2}\s*[).\-]/.test(normalizzaTesto(righe[k])) &&
+       !annuncia(senzaAccenti(righe[k])) && annuncia(t + " " + senzaAccenti(righe[k]))){ inizio = k + 1; break; }
   }
   /* L'annuncio può anche non dire «seguente»: «si comunica il calendario e
      l'o.d.g. dei consigli di classe». Vale allora soltanto se l'elenco
@@ -5090,9 +5156,9 @@ function trovaOdg(righe){
     var norm = normalizzaTesto(riga);
     if(!riga.trim()) continue;
 
-    var mp = norm.match(/^\s*(\d{1,2})\s*[).]\s*(.*)$/) || norm.match(/^\s*(\d{1,2})\s+-\s+(.*)$/);
+    var mp = norm.match(/^\s*(\d{1,2})\s*[).]\s*(.*)$/) || norm.match(/^\s*(\d{1,2})\s*-\s+(.*)$/);
     if(mp && Number(mp[1]) === atteso){
-      corrente = {testo: riga.trim().replace(/^\s*\d{1,2}\s*[).]\s*/, "").replace(/^\s*\d{1,2}\s+-\s+/, ""), sotto: []};
+      corrente = {testo: riga.trim().replace(/^\s*\d{1,2}\s*[).]\s*/, "").replace(/^\s*\d{1,2}\s*[-–—]\s+/, ""), sotto: []};
       punti.push(corrente);
       atteso++;
       ultimaRiga = i;
@@ -5113,7 +5179,13 @@ function trovaOdg(righe){
        maiuscolo o una firma: allora l'elenco è finito */
     var tuttoMaiuscolo = norm === norm.toUpperCase() && /[A-Z]/.test(norm);
     var firma = /^(IL|LA)\s+(DIRIGENTE|PRESIDENTE)|^Il\s+Dirigente|^Documento firmato|^Prof\.ssa|^Dott\.ssa/i.test(norm.trim());
-    var chiuso = /\.\s*$/.test(corrente.testo);
+    /* il punto fermo chiude il punto, ma non quello di un'abbreviazione,
+       «Avviso pubblico prot.» / «239372 del 12/10/2026», e non quando la
+       riga che segue comincia in minuscolo o con una cifra: allora la frase
+       continua, qualunque sia il rientro della riga */
+    var abbreviazione = /(?:^|[\s(])(?:prot|n|nn|nr|art|artt|L|D\.?\s?Lgs|D\.?\s?M|D\.?\s?P\.?\s?R|c|co|lett|pag|pagg|cfr|reg)\.\s*$/i.test(corrente.testo);
+    var prosegue = /^\s*[a-zà-ú0-9(«"]/.test(norm);
+    var chiuso = /\.\s*$/.test(corrente.testo) && !abbreviazione && !prosegue;
     if(tuttoMaiuscolo || firma || chiuso) break;
 
     corrente.testo = (corrente.testo + " " + riga.trim()).replace(/\s+/g, " ").trim();
@@ -5196,7 +5268,7 @@ function classiDaRiga(riga, classi){
 
 var CANONICO = {
   "consiglio-istituto": "Consiglio d'Istituto",
-  "collegio": "Collegio dei docenti",
+  "collegio": "Collegio dei Docenti",
   "dipartimenti": "Riunione di dipartimento",
   "consiglio-classe": "Consiglio di classe",
   "glo": "GLO",
@@ -5218,6 +5290,7 @@ var CANONICO = {
   "orario": "Orario delle lezioni",
   "formazione": "Corso di formazione",
   "comunicazione": "Comunicazione",
+  "uscita": "Uscita didattica",
   "altro": ""
 };
 
@@ -5245,7 +5318,8 @@ var CHIAVE_CATEGORIA = {
   "scadenza": /scadenz/i,
   "commissioni": /commission|gruppi\s+di\s+lavoro/i,
   "orario": /orario/i,
-  "formazione": /corso|formazion|modul/i
+  "formazione": /corso|formazion|modul/i,
+  "uscita": /uscit|visit|viagg/i
 };
 
 /* ---------- corsi di formazione ---------- */
@@ -5481,6 +5555,215 @@ function periodoDa(iso){
 }
 
 /* ============================================================
+   USCITE DIDATTICHE, VISITE GUIDATE, VIAGGI D'ISTRUZIONE
+   Una circolare di questo genere riguarda il docente soltanto nei giorni in
+   cui lo accompagna: la voce nasce lì e da nessun'altra parte. Le altre
+   date del documento, i turni di altri docenti e le scadenze degli alunni,
+   restano fra le date tralasciate, con il loro motivo.
+   ============================================================ */
+var RE_USCITA = /\b(?:uscit[ae]\s+didattic[ae]|visit[ae]\s+guidat[ae]|viagg(?:io|i)\s+(?:di|d')\s*istruzione|visit[ae]\s+(?:a|al|alla|allo|ai|agli|alle|all'|presso|in|nel|nella|di|del|della|dello|dei|degli|delle|d'))(?![a-zà-ú])/i;
+
+function tipoUscita(oggetto){
+  var t = senzaAccenti(oggetto);
+  if(/viagg(?:io|i)\s+(?:di|d')\s*istruzione/.test(t)) return "Viaggio d'istruzione";
+  if(/uscit[ae]\s+didattic/.test(t)) return "Uscita didattica";
+  return "Visita guidata";
+}
+
+/* la meta è l'oggetto senza la formula che lo annuncia: «Uscita didattica
+   presso il museo X» diventa «Museo X». Una coda staccata da un trattino o
+   da una virgola, come le classi o la data, non fa parte della meta. */
+function metaUscita(oggetto){
+  var t = normalizzaTesto(oggetto || "");
+  var m = RE_USCITA.exec(t);
+  if(!m) return "";
+  t = t.slice(m.index + m[0].length);
+  t = t.replace(/^[\s:,.\-]*(?:guidat[ae]\s+)?/i, "")
+       .replace(/^(?:presso|a|ad|in|di|da)\s+/i, "")
+       .replace(/^(?:(?:il|lo|la|i|gli|le)\s+|l'\s*|(?:al|allo|alla|ai|agli|alle|nel|nello|nella|nei|negli|nelle|del|dello|della|dei|degli|delle)\s+|(?:all|nell|dell)'\s*)/i, "")
+       .replace(/\s+[-,;(].*$/, "")
+       .replace(/\s+/g, " ").trim();
+  return maiuscolaIniziale(t);
+}
+
+/* Le celle di una riga. Dal PDF, i pezzi della riga con la loro ascissa: una
+   distanza ampia fra un pezzo e il successivo separa due colonne. Da un
+   testo senza posizioni, le colonne sono separate da una tabulazione o da
+   più spazi, e l'ascissa è il numero d'ordine della cella. */
+function celleDiRiga(riga, pos){
+  var celle = [];
+  if(pos && pos.pezzi && pos.pezzi.length){
+    var cur = null, fine = 0;
+    pos.pezzi.forEach(function(z, k){
+      var pezzo = riga.slice(z.da, k + 1 < pos.pezzi.length ? pos.pezzi[k + 1].da : riga.length);
+      var soglia = Math.max(12, 3 * (z.h || 4));
+      /* lo spazio fra due colonne arriva a volte come un pezzo bianco largo
+         quanto la distanza: non fa parte di nessuna cella */
+      if(!pezzo.trim()){ if(cur) cur.testo += " "; return; }
+      if(!cur || z.x - fine > soglia){ cur = {testo: "", x: z.x}; celle.push(cur); }
+      cur.testo += pezzo;
+      fine = z.x + z.w;
+    });
+  }else{
+    String(riga).split(/\t+| {2,}/).forEach(function(t, k){ celle.push({testo: t, x: k, ordine: true}); });
+  }
+  return celle.map(function(c){ c.testo = c.testo.trim(); return c; }).filter(function(c){ return c.testo; });
+}
+
+/* una cella che dice soltanto un giorno: «MARTEDI' 1° DICEMBRE», «23/11/2026» */
+function giornoDiCella(testo, anni){
+  var t = normalizzaTesto(testo);
+  var d = trovaDate(t, anni, {mese: 0}).filter(function(x){ return !x.fine; });
+  if(d.length !== 1) return "";
+  var resto = (t.slice(0, d[0].da) + " " + t.slice(d[0].a))
+    .replace(new RegExp("(^|[^A-Za-zÀ-ÿ])(" + RE_GSETT + ")(?![A-Za-zÀ-ÿ])", "gi"), "$1 ")
+    .replace(/[\s'":;,.\-()]/g, "");
+  return resto ? "" : d[0].iso;
+}
+
+var RE_CLASSE_IN_TESTA = /^\s*(\d)\s*[°ª^]?\s*([A-Z]{1,4})\b/;
+var RE_FIRMA = /^\s*(?:(?:il|la)\s+(?:dirigente|presidente)|documento\s+firmato)/i;
+
+/* I turni: una riga d'intestazione fatta di soli giorni, una colonna per
+   giorno, e sotto le righe «classe e docente». Dal PDF le colonne arrivano
+   una dopo l'altra: ogni riga va al giorno della colonna più vicina. Una
+   riga che non comincia con una classe continua quella sopra, nella stessa
+   colonna. */
+function turniUscita(righe, anni, posizioni, da){
+  var turni = [], i, testata = null, ultimo = {};
+  for(i = da; i < righe.length; i++){
+    var riga = righe[i];
+    if(!riga.trim()) continue;
+    if(RE_FIRMA.test(normalizzaTesto(riga))){ testata = null; continue; }
+    var pos = posizioni ? posizioni[i] : null;
+    var celle = celleDiRiga(riga, pos);
+    var giorni = celle.map(function(c){ return giornoDiCella(c.testo, anni); });
+    if(celle.length && giorni.every(Boolean)){
+      testata = celle.map(function(c, k){ return {data: giorni[k], x: c.x}; });
+      ultimo = {};
+      continue;
+    }
+    if(!testata) continue;
+    if(normalizzaTesto(riga).length > 120){ testata = null; continue; }
+    celle.forEach(function(c){
+      var col = 0, k;
+      if(c.ordine) col = Math.min(c.x, testata.length - 1);
+      else for(k = 1; k < testata.length; k++)
+        if(Math.abs(testata[k].x - c.x) < Math.abs(testata[col].x - c.x)) col = k;
+      var mc = normalizzaTesto(c.testo).match(RE_CLASSE_IN_TESTA);
+      if(mc){
+        ultimo[col] = {data: testata[col].data, classe: mc[1] + mc[2], testo: c.testo, riga: i};
+        turni.push(ultimo[col]);
+      }else if(ultimo[col]){
+        ultimo[col].testo += " " + c.testo;
+      }
+    });
+  }
+  return turni;
+}
+
+/* le frasi del corpo del documento, dall'oggetto alla tabella o alla firma */
+function frasiDelCorpo(righe, da, a){
+  var t = righe.slice(da, a).map(function(r){ return r.trim(); }).filter(Boolean).join(" ")
+               .replace(/\s+/g, " ");
+  return t.split(/(?<=[.!?])\s+(?=[A-ZÀ-Ý«"“])/);
+}
+
+function oraBreve(o){ return o ? String(Number(o.split(":")[0])) + ":" + o.split(":")[1] : ""; }
+
+/* I dettagli dell'uscita, con le parole del documento: partenza e rientro,
+   quello che l'accompagnatore deve ritirare, e il pagamento che spetta agli
+   alunni. Quello che le regole non sanno ricomporre resta com'è scritto. */
+function dettagliUscita(frasi, anni){
+  var d = [], usate = [];
+  var fP = frasi.filter(function(f){ return /\bpartenz/i.test(f); })[0];
+  if(fP){
+    usate.push(fP);
+    var n = normalizzaTesto(fP);
+    var mezzo = n.match(/\bin\s+(treno|pullman|autobus|bus|aereo|nave|traghetto|metropolitana|tram)\b/i);
+    var luogo = n.match(/(?:^|\s)(dalla|dallo|dal|da)\s+([^,;]+?)\s+(?:alle\s+ore|alle|ore)\s+\d/i) ||
+                n.match(/(?:^|\s)(dall')\s*([^,;]+?)\s+(?:alle\s+ore|alle|ore)\s+\d/i);
+    var iR = n.search(/\brientro\b/i);
+    var oraP = trovaOrari(iR > 0 ? n.slice(0, iR) : n).filter(function(o){ return !o.fine; })[0];
+    var fR = iR >= 0 ? n.slice(iR) : normalizzaTesto(frasi.filter(function(f){ return /\brientro\b/i.test(f); })[0] || "");
+    var oraR = trovaOrari(fR).filter(function(o){ return !o.fine; })[0];
+    if(oraP){
+      var s = "Partenza" + (mezzo ? " in " + mezzo[1].toLowerCase() : "") +
+              (luogo ? " " + luogo[1].toLowerCase() + (luogo[1] === "dall'" ? "" : " ") + luogo[2].trim() : "") +
+              " alle " + oraBreve(oraP.ora);
+      if(oraR) s += "; rientro" + (/\b(?:intorno|circa|verso)\b/i.test(fR) ? " intorno" : "") + " alle " + oraBreve(oraR.ora);
+      d.push(s + ".");
+    }else d.push(fP);
+  }
+
+  var fA = frasi.filter(function(f){ return /accompagnator/i.test(f) && /consegn|ritir|raccogl/i.test(f); })[0];
+  if(fA){
+    usate.push(fA);
+    /* la forma si cerca sul testo com'è, perché gli apostrofi restino quelli
+       del documento: le formule non ne contengono */
+    var nA = fA.replace(/\.$/, "");
+    var mA = nA.match(/consegnare\s+(?:al|ai|alla|alle)\s+(?:docent[ei]\s+)?accompagnator[ei]\s*,?\s*(?:((?:almeno|entro|prima|il\s+giorno)[^,]*),\s*)?(.+)$/i);
+    var chiA = nA.match(/\b(gli\s+studenti|gli\s+alunni|le\s+famiglie|i\s+genitori)\b/i);
+    var daChi = chiA ? {"gli studenti": "dagli studenti", "gli alunni": "dagli alunni", "le famiglie": "dalle famiglie",
+                        "i genitori": "dai genitori"}[chiA[1].toLowerCase().replace(/\s+/g, " ")] : "";
+    if(mA) d.push("Accompagnatore: ritirare" + (daChi ? " " + daChi : "") + (mA[1] ? ", " + mA[1].trim() + "," : "") +
+                  " " + mA[2].trim() + ".");
+    else d.push("Accompagnatore: " + fA);
+  }
+
+  frasi.forEach(function(f, k){
+    if(usate.indexOf(f) >= 0 || !/pagament/i.test(f) || !/\bentro\b/i.test(f)) return;
+    var nP = normalizzaTesto(f).replace(/\.$/, "");
+    var data = trovaDate(nP, anni, {mese: 0})[0];
+    if(!data) return;
+    var costo = null, k2;
+    for(k2 = Math.max(0, k - 1); k2 <= k && !costo; k2++)
+      costo = normalizzaTesto(frasi[k2]).match(/\bcosto\s+(?:del|della|dello|dei|degli|delle)\s+(.+?)\s+è\s+(?:di\s+)?((?:euro|€)\s*[\d.,]*\d)/i);
+    var chi = nP.match(/\b(ogni\s+alunno|gli\s+alunni|ogni\s+studente|gli\s+studenti|le\s+famiglie|i\s+genitori)\b/i);
+    var aCura = chi ? {"ogni alunno": "degli alunni", "gli alunni": "degli alunni", "ogni studente": "degli studenti",
+                       "gli studenti": "degli studenti", "le famiglie": "delle famiglie",
+                       "i genitori": "dei genitori"}[chi[1].toLowerCase().replace(/\s+/g, " ")] : "";
+    var via = f.replace(/\.$/, "").match(/\b((?:attraverso|tramite|mediante)\s+.+?)\s*,?\s+entro\b/i);
+    var p = data.iso.split("-"), g = Number(p[2]);
+    var dataBreve = p[2] + "/" + p[1] + "/" + p[0];
+    d.push("Pagamento" + (costo ? " del " + costo[1] + " (" + costo[2] + ")" : "") +
+           (aCura ? " a cura " + aCura : "") +
+           " entro " + (g === 8 || g === 11 ? "l'" : "il ") + dataBreve +
+           (via ? ", " + via[1] : "") + ".");
+  });
+  return d;
+}
+
+/* Vale come uscita il documento che la nomina nell'oggetto e ne dice gli
+   accompagnatori. Una raccolta di adesioni a un viaggio, che non ne nomina
+   nessuno, si legge come ogni altra circolare. */
+function leggiUscita(righe, oggetto, anni, config, posizioni){
+  if(!oggetto || !RE_USCITA.test(normalizzaTesto(oggetto))) return null;
+  if(!righe.some(function(r){ return /accompagnator/i.test(r); })) return null;
+  var iOgg = 0, i;
+  for(i = 0; i < righe.length; i++) if(/^\s*OGGETTO\s*:/i.test(normalizzaTesto(righe[i]))){ iOgg = i; break; }
+  var turni = turniUscita(righe, anni, posizioni, iOgg + 1);
+  /* il corpo finisce dove comincia la tabella dei turni, o alla firma */
+  var fine = righe.length;
+  if(turni.length){
+    for(i = iOgg + 1; i < righe.length; i++){
+      var cc = celleDiRiga(righe[i], posizioni ? posizioni[i] : null);
+      if(cc.length && cc.every(function(c){ return giornoDiCella(c.testo, anni); })){ fine = i; break; }
+    }
+  }
+  for(i = iOgg + 1; i < fine; i++) if(RE_FIRMA.test(normalizzaTesto(righe[i]))){ fine = i; break; }
+  var miei = turni.filter(function(t){ return docenteNelTesto(t.testo, config); });
+  return {
+    tipo: tipoUscita(oggetto),
+    meta: metaUscita(oggetto),
+    turni: turni,
+    miei: miei,
+    giorni: turni.map(function(t){ return t.data; }).filter(function(x, k, a){ return a.indexOf(x) === k; }),
+    dettagli: dettagliUscita(frasiDelCorpo(righe, iOgg + 1, fine), anni)
+  };
+}
+
+/* ============================================================
    IL GIRO COMPLETO
    ============================================================ */
 
@@ -5527,6 +5810,7 @@ function leggiARegole(testo, opzioni){
   if(mProt) protIso = mProt[3] + "-" + mProt[2] + "-" + mProt[1];
   var oggiLettura = opzioni.oggi !== undefined ? opzioni.oggi : (typeof oggiISO === "function" ? oggiISO() : "");
   anni.dopo = protIso || riferimentoSenzaProtocollo(oggiLettura);
+  var uscita = leggiUscita(righe, oggetto, anni, config, opzioni.posizioni || null);
 
   /* ---------- primo tempo: righe, date, orari ---------- */
   var contesto = {mese: 0, anno: 0};
@@ -6107,6 +6391,40 @@ function leggiARegole(testo, opzioni){
     visteRighe[r.n] = true;
     elencoNonUsate.push(r);
   });
+
+  /* un'uscita didattica dà soltanto le voci dei giorni in cui il docente
+     accompagna; tutto il resto passa fra le date tralasciate */
+  if(uscita){
+    voci.forEach(function(v){
+      scartate.push({n: -1, testo: v.titolo, data: v.data, motivo: "uscita didattica: conta soltanto il giorno in cui accompagni"});
+    });
+    uscita.giorni.forEach(function(g){
+      if(!uscita.miei.some(function(t){ return t.data === g; }))
+        scartate.push({n: -1, testo: uscita.tipo + " — " + uscita.meta, data: g, motivo: "accompagnano altri docenti"});
+    });
+    elencoNonUsate = [];
+    voci = [];
+    var perGiorno = {};
+    uscita.miei.forEach(function(t){
+      if(!perGiorno[t.data]){ perGiorno[t.data] = []; }
+      if(perGiorno[t.data].indexOf(t.classe) < 0) perGiorno[t.data].push(t.classe);
+    });
+    Object.keys(perGiorno).sort().forEach(function(g){
+      var cl = ordinaClassi(perGiorno[g], classi);
+      var orePartenza = uscita.dettagli.length && /^Partenza\b.*? alle (\d{1,2}):(\d{2})/.exec(uscita.dettagli[0]);
+      var d = [];
+      if(orePartenza) d.push("Ore " + dueCifre(orePartenza[1]) + ":" + orePartenza[2] + ".");
+      voci.push({
+        id: "", tipo: "impegno",
+        titolo: uscita.tipo + (uscita.meta ? " — " + uscita.meta : "") + " — " + elencoLeggibile(cl) + " (accompagnatore)",
+        classe: cl.join(", "), materia: "", alunni: "",
+        data: g, ora: "", durata: 0, periodo: periodoDa(g), stato: "da fare", link: "",
+        fonte: fonte,
+        dettagli: d.concat(uscita.dettagli).join("\n"),
+        categoria: "uscita", oraFine: "", fineIntervallo: null
+      });
+    });
+  }
 
   var riguarda = !destinatari.length || destinatari.some(function(d){ return d.docenti; });
 
@@ -7432,6 +7750,8 @@ function statoImportVuoto(nome){
     nomeFile: nome || "",
     idDocumento: "",
     testo: "",
+    posizioni: null, /* {testo, righe}: dove sta ogni riga del PDF sulla pagina */
+    promemoria: "",  /* l'identificativo del promemoria conservato da questo documento */
     lettura: null,   /* l'esito di leggiARegole */
     spuntate: {},    /* indice della voce candidata -> vero se da scrivere */
     gia: {},         /* indice della voce candidata -> titolo di quella che c'è già */
@@ -7483,27 +7803,47 @@ function bytiDiLavoro(buf){
   return new Uint8Array(buf.slice(0));
 }
 
+/* Restituisce il testo, riga per riga, e accanto a ogni riga la sua
+   posizione sulla pagina: la pagina, l'altezza e i pezzi di cui è fatta, con
+   il carattere da cui comincia ciascuno, la sua ascissa e la sua larghezza.
+   Il testo da solo perde le colonne: una tabella a due colonne arriva una
+   colonna dopo l'altra, e soltanto l'ascissa dice a quale colonna appartiene
+   una riga. Le posizioni servono anche a ritrovare i capoversi. */
 async function testoDaPdf(buf){
   var lib = await accendiPdfJs();
   var doc = await lib.getDocument({data: bytiDiLavoro(buf), isEvalSupported: false}).promise;
-  var pagine = [], p, pag, cont, riga, ultimaY, pezzi;
+  var pagine = [], posizioni = [], p, pag, cont, riga, ultimaY, pezzi, pos;
   for(p = 1; p <= doc.numPages; p++){
     pag = await doc.getPage(p);
     cont = await pag.getTextContent();
-    riga = []; ultimaY = null; pezzi = [];
+    riga = []; ultimaY = null; pezzi = []; pos = null;
+    var chiudi = function(){
+      pezzi.push(riga.join(""));
+      posizioni.push(pos || {p: p, y: ultimaY, pezzi: []});
+      riga = []; pos = null;
+    };
     cont.items.forEach(function(it){
       if(!it.str) return;
       var y = it.transform[5];
-      if(ultimaY !== null && Math.abs(y - ultimaY) > 2){ pezzi.push(riga.join("")); riga = []; }
+      if(ultimaY !== null && Math.abs(y - ultimaY) > 2) chiudi();
+      if(!pos) pos = {p: p, y: y, pezzi: []};
+      pos.pezzi.push({da: riga.join("").length, x: it.transform[4], w: it.width || 0, n: it.str.length,
+                      h: Math.abs(it.transform[3]) || it.height || 0});
       riga.push(it.str);
-      if(it.hasEOL){ pezzi.push(riga.join("")); riga = []; }
       ultimaY = y;
+      if(it.hasEOL) chiudi();
     });
-    if(riga.length) pezzi.push(riga.join(""));
+    if(riga.length) chiudi();
+    if(!pezzi.length) posizioni.push(null);       /* una pagina senza testo è una riga vuota */
     pagine.push(pezzi.join("\n"));
+    if(p < doc.numPages) posizioni.push(null);   /* la riga vuota fra due pagine */
   }
   try{ await doc.destroy(); }catch(e){}
-  return pagine.join("\n\n");
+  var testo = pagine.join("\n\n");
+  /* un pezzo che portasse un a capo suo spezzerebbe la corrispondenza fra
+     righe e posizioni: allora le posizioni non si usano */
+  if(testo.split("\n").length !== posizioni.length) posizioni = null;
+  return {testo: testo, posizioni: posizioni};
 }
 
 
@@ -7668,13 +8008,13 @@ async function testoDaFile(file){
   var nome = (file.name || "").toLowerCase();
   var buf = await file.arrayBuffer();
   if(nome.endsWith(".pdf") || file.type === "application/pdf"){
-    var t = await testoDaPdf(buf);
+    var tp = await testoDaPdf(buf);
     /* il timbro è un di più: se non si riesce a ritagliarlo il testo si legge
        lo stesso, ma il motivo va detto invece di sparire */
     var pp = null, erroreTimbro = "";
     try{ pp = await primaPagina(buf); }
     catch(e){ erroreTimbro = (e && e.message) ? e.message : "il timbro non si è potuto ritagliare"; }
-    return {testo: t, immagine: pp ? pp.immagine : null, soloTimbro: !!(pp && pp.soloTimbro),
+    return {testo: tp.testo, posizioni: tp.posizioni, immagine: pp ? pp.immagine : null, soloTimbro: !!(pp && pp.soloTimbro),
             locale: pp ? pp.locale : null, erroreTimbro: erroreTimbro,
             ritaglio: pp ? pp.ritaglio : "", intera: pp ? pp.intera : ""};
   }
@@ -7703,20 +8043,36 @@ function testoDiVerbale(c){
 /* ---------- il protocollo: lettore locale del timbro, oppure a mano ---------- */
 /* Il lettore locale riconosce le forme del timbro dentro la pagina e non
    sbaglia per conto proprio: quando dà un esito sicuro, quello vince. */
+/* Il numero della segnatura ha sempre sette cifre, zeri iniziali compresi:
+   uno letto più corto ha perso una cifra per strada, e completarlo con gli
+   zeri vorrebbe dire tirare a indovinare. Un numero con una cifra incerta, o
+   più corto, e una data con un carattere incerto non vanno nei campi: restano
+   vuoti, da scrivere a mano guardando il timbro. */
 function protDaLocale(){
   var l = STATO_IMPORT.locale;
-  if(!l || !l.esito) return {numero: "", data: "", sicuro: false};
+  if(!l || !l.esito) return {numero: "", data: "", sicuro: false, intero: false, dataCerta: false, dubbi: 0};
   var e = l.esito;
   var num = String(e.numero || "");
   var data = due(e.giorno) + "/" + due(e.mese) + "/" + String(e.anno || "");
+  var intero = num.length >= 7 && num.indexOf("?") < 0;
+  var dataCerta = /^\d{2}\/\d{2}\/\d{4}$/.test(data);
   return {
-    numero: num.indexOf("?") >= 0 ? num : (num.length < 7 ? ("0000000" + num).slice(-7) : num),
-    data: data.indexOf("?") >= 0 ? data : data,
-    sicuro: !!e.sicuro,
+    numero: num,
+    data: data,
+    sicuro: !!e.sicuro && intero && dataCerta,
+    intero: intero,
+    dataCerta: dataCerta,
+    corto: num.length < 7,
     dubbi: e.dubbi || 0
   };
 }
-function due(x){ var s = String(x || "").trim().replace(/\D/g, ""); return s.length === 1 ? "0" + s : s; }
+/* nei campi va soltanto quello che il lettore ha letto per intero */
+function campiDalTimbro(){
+  var pl = protDaLocale();
+  return {numero: pl.intero ? pl.numero : "", data: pl.dataCerta ? pl.data : ""};
+}
+/* un giorno o un mese incerto resta incerto: «2?» non diventa «02» */
+function due(x){ var s = String(x || "").trim().replace(/[^0-9?]/g, ""); return s.length === 1 ? "0" + s : s; }
 
 function vociConConvocazione(){
   return (STATO_IMPORT.scritte || []).filter(function(v){
@@ -7962,9 +8318,11 @@ async function leggiDocumento(file){
   STATO_IMPORT.locale = estratto.locale || null;
   STATO_IMPORT.erroreTimbro = estratto.erroreTimbro || "";
   var pl = protDaLocale();
-  if(pl.numero) STATO_IMPORT.prot = {numero: pl.numero, data: pl.data};
+  if(pl.numero) STATO_IMPORT.prot = campiDalTimbro();
 
   var testo = estratto.testo || "";
+  /* le posizioni valgono per questo testo e per nessun altro */
+  STATO_IMPORT.posizioni = estratto.posizioni ? {testo: testo, righe: estratto.posizioni} : null;
   if(estratto.composizione){
     var c = estratto.composizione;
     STATO_IMPORT.tipoDoc = "composizione";
@@ -8014,16 +8372,18 @@ function leggiTestoARegole(testo, nome){
   var pl = protDaLocale();
   /* un numero con una cifra non riconosciuta non è un numero: togliere il «?»
      ne darebbe un altro, più corto. Resta vuoto, e il pannello lo chiede. */
-  var numeroLetto = STATO_IMPORT.prot.numero || pl.numero || "";
+  var numeroLetto = STATO_IMPORT.prot.numero || (pl.intero ? pl.numero : "");
   var prot = {
     numero: /\?/.test(numeroLetto) ? "" : numeroLetto,
-    data: (STATO_IMPORT.prot.data || pl.data || "")
+    data: (STATO_IMPORT.prot.data || (pl.dataCerta ? pl.data : ""))
   };
   if(/\?/.test(prot.data)) prot.data = "";
 
   var lettura;
   try{
-    lettura = leggiARegole(testo, {config: stato.config, protocollo: prot, nomeFile: STATO_IMPORT.nomeFile});
+    var pos = STATO_IMPORT.posizioni && STATO_IMPORT.posizioni.testo === testo ? STATO_IMPORT.posizioni.righe : null;
+    lettura = leggiARegole(testo, {config: stato.config, protocollo: prot, nomeFile: STATO_IMPORT.nomeFile,
+                                   posizioni: pos});
   }catch(e){
     STATO_IMPORT.fase = "errore";
     STATO_IMPORT.errore = "Le regole di lettura non hanno retto questo documento: " + (e && e.message ? e.message : "errore imprevisto");
@@ -8408,6 +8768,7 @@ function disegnaDocumenti(){
     if(L) h += schedaDocumento(L);
     if(L && STATO_IMPORT.fase === "conferma") h += schedaConferma(L);
     if(L && STATO_IMPORT.fase === "fatto") h += schedaScritte();
+    if(L && (STATO_IMPORT.fase === "conferma" || STATO_IMPORT.fase === "fatto")) h += schedaPromemoria(L);
     if(L) h += schedaResti(L);
 
     if(STATO_IMPORT.testo){
@@ -8523,7 +8884,10 @@ function schedaResti(L){
          esc(Object.keys(motivi).map(function(k){ return motivi[k] + " " + k; }).join(", ")) + ')</summary>';
     h += '<ul class="resti">';
     L.scartate.forEach(function(s){
-      h += '<li><span class="nr">riga ' + (s.n + 1) + '</span><span class="txt">' + esc(s.testo.slice(0, 140)) + '</span>' +
+      /* le date tralasciate da un'uscita didattica non hanno una riga sola:
+         si dice il giorno */
+      var dove = s.n >= 0 ? 'riga ' + (s.n + 1) : String(s.data || "").split("-").reverse().join("/");
+      h += '<li><span class="nr">' + esc(dove) + '</span><span class="txt">' + esc(s.testo.slice(0, 140)) + '</span>' +
            '<span class="num">' + esc(s.motivo) + '</span></li>';
     });
     h += '</ul></details>';
@@ -8599,8 +8963,10 @@ function pannelloTimbro(){
     h += '<p class="aiuto"><b>Lettore locale della pagina:</b> ' + esc(loc.numero) +
          (loc.data ? ' del ' + esc(loc.data) : '') +
          (loc.sicuro ? ' — riconosciuto per intero, senza chiedere niente a nessuno.'
-                     : ' — ' + loc.dubbi + (loc.dubbi === 1 ? ' carattere' : ' caratteri') +
-                       ' non riconosciuti (i «?»): scrivi il numero giusto qui sopra e la forma verrà imparata.') +
+                     : loc.dubbi ? ' — ' + loc.dubbi + (loc.dubbi === 1 ? ' carattere' : ' caratteri') +
+                       ' non riconosciuti (i «?»): scrivi il numero giusto qui sopra e la forma verrà imparata.'
+                     : loc.corto ? ' — il numero letto ha meno di sette cifre: ne manca qualcuna. Scrivi qui sopra il numero intero.'
+                     : ' — da controllare: scrivi qui sopra numero e data come li leggi nel timbro.') +
          '</p>';
   }else{
     h += '<p class="aiuto">Il lettore locale non ha trovato il timbro: trascrivi il numero dal riquadro qui sopra.</p>';
@@ -8742,6 +9108,446 @@ function schedaComposizione(){
   return h + '</div>';
 }
 
+/* ===== promemoria.js ============================================== */
+/* ============================================================
+   PROMEMORIA
+   Un documento che non dà voci in agenda, come una circolare di
+   istruzioni, si conserva per intero: il testo dall'oggetto alla
+   firma, senza l'intestazione della scuola, con i suoi capoversi,
+   le numerazioni, gli elenchi e le formule tra « » così come sono.
+   Lo stesso si può fare con ogni documento letto.
+   I promemoria stanno nell'archivio accanto alle voci: viaggiano su
+   GitHub, entrano nei backup e la pulizia del 1° settembre non li
+   tocca. Li cancella soltanto il docente.
+   ============================================================ */
+
+var VISTA_PROMEMORIA = {cerca: "", aperto: "", modifica: "", elimina: ""};
+
+/* il segno che apre un punto di un elenco: «1.», «1)», «a)», un pallino o un
+   trattino. I pallini dei PDF arrivano spesso come un carattere privato del
+   carattere tipografico Symbol, che nessun altro carattere sa disegnare. */
+var RE_SEGNO_ELENCO = /^\s*(?:\d{1,2}\s*[.)]\s|\d{1,2}\s+-\s|[a-z]\s*\)\s|[•●▪◦‣∙·–—*-]\s|[-])/;
+var RE_PALLINO_PRIVATO = /^(\s*)[-]\s*/;
+
+/* ---------- dal testo letto ai capoversi ---------- */
+/* la geometria di una riga del PDF: pagina, altezza, inizio e fine del testo */
+function geometriaRiga(testo, pos){
+  if(!pos || !pos.pezzi || !pos.pezzi.length) return null;
+  var piene = pos.pezzi.filter(function(z){ return testo.slice(z.da, z.da + z.n).trim(); });
+  if(!piene.length) return null;
+  return {p: pos.p, y: pos.y, x: piene[0].x,
+          xf: Math.max.apply(null, piene.map(function(z){ return z.x + z.w; })),
+          h: piene[0].h || 10};
+}
+
+/* Le righe diventano capoversi. Dal PDF si guarda la pagina: un salto più
+   ampio dell'interlinea, una riga che finisce con un punto prima del margine
+   destro, un rientro dopo una frase chiusa aprono un capoverso nuovo; ogni
+   punto di un elenco ne apre uno suo. Le righe vuote che il PDF lascia in
+   mezzo a un capoverso non contano. Da un testo senza posizioni valgono le
+   righe vuote, quando ci sono, e altrimenti ogni riga, salvo quella che
+   comincia in minuscolo e continua la precedente. Dalla firma in giù le
+   righe restano una per una. */
+function capoversiDi(righe, posizioni, da, a){
+  var linee = [], i, k;
+  var conRigheVuote = false;
+  for(i = da; i < a; i++){
+    var t = String(righe[i] || "").replace(/\s+$/, "");
+    if(!t.trim()){ if(linee.length) linee[linee.length - 1].dopoVuota = true; continue; }
+    var pos = posizioni ? posizioni[i] : null;
+    /* due colonne sulla stessa riga del PDF restano due celle */
+    var celle = pos ? celleDiRiga(t, pos) : [];
+    linee.push({testo: celle.length > 1 ? celle.map(function(c){ return c.testo; }).join("\t") : t.trim(),
+                g: geometriaRiga(t, pos), dopoVuota: false});
+  }
+  var geometria = linee.length > 0 && linee.every(function(l){ return l.g; });
+  if(!geometria) conRigheVuote = linee.some(function(l, j){ return l.dopoVuota && j < linee.length - 1; });
+
+  /* Una tabella a più colonne arriva dal PDF una colonna dopo l'altra: le
+     righe si rimettono nell'ordine della pagina, dall'alto in basso, e i
+     pezzi che stanno alla stessa altezza tornano sulla stessa riga, separati
+     da una tabulazione. */
+  if(geometria){
+    linee.forEach(function(l, j){ l.ordine = j; });
+    linee.sort(function(x, y){
+      if(x.g.p !== y.g.p) return x.g.p - y.g.p;
+      if(Math.abs(x.g.y - y.g.y) > 2) return y.g.y - x.g.y;
+      return x.g.x - y.g.x || x.ordine - y.ordine;
+    });
+    var unite = [];
+    linee.forEach(function(l){
+      var u = unite[unite.length - 1];
+      if(u && u.g.p === l.g.p && Math.abs(u.g.y - l.g.y) <= 2 && l.g.x > u.g.xf){
+        u.testo += "\t" + l.testo;
+        u.g = {p: u.g.p, y: u.g.y, x: u.g.x, xf: l.g.xf, h: u.g.h};
+      }else unite.push(l);
+    });
+    linee = unite;
+  }
+
+  /* l'interlinea è il salto più comune fra due righe della stessa pagina; il
+     margine destro è dove arriva la gran parte delle righe */
+  var salti = [], fini = [];
+  for(k = 1; k < linee.length; k++){
+    var g0 = linee[k - 1].g, g1 = linee[k].g;
+    if(g0 && g1 && g0.p === g1.p){
+      var s = g0.y - g1.y;
+      if(s > 0 && s < 3 * g1.h) salti.push(s);
+    }
+  }
+  linee.forEach(function(l){ if(l.g) fini.push(l.g.xf); });
+  salti.sort(function(x, y){ return x - y; });
+  fini.sort(function(x, y){ return x - y; });
+  var passo = salti.length ? salti[Math.floor(salti.length / 2)] : 0;
+  var destro = fini.length ? fini[Math.floor((fini.length - 1) * 0.9)] : 0;
+
+  var capoversi = [], cur = null, firma = false;
+  linee.forEach(function(l, j){
+    var t = l.testo, prec = linee[j - 1], nuovo = !cur;
+    if(!nuovo && !firma && RE_FIRMA.test(normalizzaTesto(t))){ nuovo = true; firma = true; }
+    else if(!nuovo && firma){ cur.push("\n" + t); return; }
+    else if(!nuovo && RE_SEGNO_ELENCO.test(t)) nuovo = true;
+    else if(!nuovo && geometria){
+      /* una riga che comincia in minuscolo, o che segue un'abbreviazione
+         come «prot.», continua la frase qualunque sia il suo rientro; una
+         riga corta seguita da una che comincia come una frase chiude il
+         capoverso, come il titoletto «2. Giustificazione delle assenze» */
+      var chiusa = /[.:;!?»”"]\s*$/.test(prec.testo);
+      var abbreviazione = /(?:^|[\s(])(?:prot|n|nn|nr|art|artt|L|c|co|lett|pag|pagg|cfr|reg)\.\s*$/i.test(prec.testo);
+      var prosegue = /^[a-zà-ú,;)»”]/.test(t);
+      var apre = /^[A-ZÀ-Ý«"“0-9]/.test(t);
+      var corta = prec.g.xf < destro - 4 * prec.g.h;
+      var salto = prec.g.y - l.g.y;
+      if(l.g.p !== prec.g.p) nuovo = chiusa && !abbreviazione && !prosegue;
+      else if(passo && salto > passo * 1.45) nuovo = true;
+      else if(prosegue || abbreviazione) nuovo = false;
+      else if(corta && apre) nuovo = true;
+      else if(chiusa && l.g.x > prec.g.x + 0.8 * l.g.h) nuovo = true;
+    }
+    else if(!nuovo) nuovo = conRigheVuote ? prec.dopoVuota : !/^[a-zà-ú,;)»”]/.test(t);
+    if(nuovo){ cur = [t]; capoversi.push(cur); }
+    else cur.push(" " + t);
+  });
+  return capoversi.map(function(c){
+    return c.join("").split("\n").map(function(r){
+      return r.replace(/ {2,}/g, " ").replace(/ *\t */g, "\t").replace(RE_PALLINO_PRIVATO, "$1• ").trim();
+    }).join("\n");
+  }).filter(Boolean);
+}
+
+/* I destinatari come li scrive il documento, prima dell'oggetto: «Ai
+   docenti» con la riga «coordinatori» che la continua, «All'Ufficio
+   alunni», «Registro elettronico». Il numero di circolare e il protocollo,
+   che stanno in mezzo, non sono destinatari. */
+function destinatariScritti(righe, fino){
+  var out = [], dentro = false, i;
+  for(i = 0; i < fino; i++){
+    var t = String(righe[i] || "").trim();
+    if(!t) continue;
+    var n = normalizzaTesto(t);
+    if(RE_CIRCOLARE.test(n) || /^prot/i.test(n)) continue;
+    if(/^(?:a|al|allo|alla|ai|agli|alle)\s+\S|^all'\s*\S/i.test(n)){ out.push(t); dentro = true; continue; }
+    if(!dentro) continue;
+    if(/^[a-zà-ú]/.test(t)){ out[out.length - 1] += " " + t; continue; }
+    if(t.length <= 40 && !/[@]|\d{3,}|www\./i.test(t)){ out.push(t); continue; }
+    dentro = false;
+  }
+  return out;
+}
+
+/* il protocollo scritto nel testo, quando il timbro non c'è */
+function protocolloNelTesto(righe, fino){
+  var i;
+  for(i = 0; i < fino; i++){
+    var m = normalizzaTesto(righe[i]).match(/\bProt(?:\.|ocollo)?\s*(?:n\.?|n°|nr\.?)?\s*(\d{3,})(?:.*?\bdel\s+(\d{1,2}\/\d{1,2}\/\d{4}))?/i);
+    if(m) return {numero: m[1], data: m[2] || ""};
+  }
+  return {numero: "", data: ""};
+}
+
+/* Il promemoria di un documento letto. Il titolo è l'oggetto; il testo va
+   dall'oggetto alla fine, firma compresa. Senza oggetto si salta
+   l'intestazione fino ai destinatari. */
+function promemoriaDaLettura(testo, posizioni, lettura, nomeFile){
+  var righe = String(testo || "").split(/\r?\n/);
+  var d = (lettura && lettura.documento) || {};
+  var i, da = -1;
+  for(i = 0; i < righe.length; i++) if(/^\s*OGGETTO\s*:/i.test(normalizzaTesto(righe[i]))){ da = i; break; }
+  var finoTesta = da >= 0 ? da : Math.min(righe.length, 20);
+  var dest = destinatariScritti(righe, finoTesta);
+  if(da < 0){
+    da = 0;
+    for(i = 0; i < finoTesta; i++){
+      var n = normalizzaTesto(righe[i]).trim();
+      if(dest.some(function(x){ return normalizzaTesto(x).indexOf(n) === 0 || normalizzaTesto(x).indexOf(n) > 0; }) ||
+         RE_CIRCOLARE.test(n)) da = i + 1;
+    }
+  }
+  var prot = {numero: d.protocollo || "", data: d.protData || ""};
+  if(!prot.numero){
+    var nelTesto = protocolloNelTesto(righe, finoTesta);
+    prot.numero = nelTesto.numero;
+    if(!prot.data) prot.data = nelTesto.data;
+  }
+  var titolo = d.oggetto || String(nomeFile || "Documento").replace(/\.[a-z0-9]+$/i, "");
+  return {
+    id: "",
+    titolo: titolo,
+    circolare: d.circolare || "",
+    protocollo: prot.numero,
+    protData: prot.data,
+    destinatari: dest.length ? dest : (d.destinatari || []).slice(),
+    capoversi: capoversiDi(righe, posizioni, da, righe.length),
+    fonte: nomeFile || ""
+  };
+}
+
+/* lo stesso documento dà sempre lo stesso identificativo: conservarlo due
+   volte non fa due promemoria */
+function idPromemoria(p){
+  var chiave = [p.circolare, p.protocollo, p.protData, p.titolo].join("|"), h = 5381, i;
+  for(i = 0; i < chiave.length; i++) h = ((h * 33) ^ chiave.charCodeAt(i)) >>> 0;
+  return "promemoria-" + h.toString(36);
+}
+
+/* ---------- nell'archivio ---------- */
+function elencoPromemoria(){
+  return Object.keys(stato.promemoria || {}).map(function(k){ return stato.promemoria[k]; })
+    .filter(Boolean).sort(function(a, b){ return (b.creato || 0) - (a.creato || 0); });
+}
+function salvaPromemoria(p){
+  if(!stato.promemoria) stato.promemoria = {};
+  p.id = p.id || idPromemoria(p);
+  p.aggiornato = Date.now();
+  if(!p.creato) p.creato = p.aggiornato;
+  stato.promemoria[p.id] = p;
+  if(stato.cancellate) delete stato.cancellate[p.id];
+  scriviLocale();
+  disegna();
+  return p.id;
+}
+function eliminaPromemoria(id){
+  if(!stato.promemoria || !stato.promemoria[id]) return;
+  delete stato.promemoria[id];
+  if(!stato.cancellate) stato.cancellate = {};
+  stato.cancellate[id] = Date.now();
+  scriviLocale();
+  disegna();
+}
+
+/* dalla schermata di lettura: conserva il documento appena letto */
+function conservaComePromemoria(){
+  var L = STATO_IMPORT.lettura;
+  if(!STATO_IMPORT.testo) return "";
+  var pos = STATO_IMPORT.posizioni && STATO_IMPORT.posizioni.testo === STATO_IMPORT.testo ? STATO_IMPORT.posizioni.righe : null;
+  var p = promemoriaDaLettura(STATO_IMPORT.testo, pos, L, STATO_IMPORT.nomeFile);
+  var id = idPromemoria(p);
+  if(stato.promemoria && stato.promemoria[id]){ STATO_IMPORT.promemoria = id; disegna(); return id; }
+  STATO_IMPORT.promemoria = salvaPromemoria(p);
+  notaFlash("Conservato fra i promemoria.");
+  return STATO_IMPORT.promemoria;
+}
+
+/* il riquadro della schermata di lettura */
+function schedaPromemoria(L){
+  var gia = STATO_IMPORT.promemoria && stato.promemoria && stato.promemoria[STATO_IMPORT.promemoria];
+  if(!gia && stato.promemoria && STATO_IMPORT.testo){
+    var pos = STATO_IMPORT.posizioni && STATO_IMPORT.posizioni.testo === STATO_IMPORT.testo ? STATO_IMPORT.posizioni.righe : null;
+    var id = idPromemoria(promemoriaDaLettura(STATO_IMPORT.testo, pos, L, STATO_IMPORT.nomeFile));
+    if(stato.promemoria[id]){ STATO_IMPORT.promemoria = id; gia = stato.promemoria[id]; }
+  }
+  if(gia){
+    return '<div class="pm-proposta"><p>Questo documento è fra i promemoria.</p>' +
+           '<button class="btn btn-piccolo" type="button" data-cmd="pm-vai" data-id="' + esc(gia.id) + '">Apri il promemoria</button></div>';
+  }
+  var senzaVoci = !L.voci.length;
+  return '<div class="pm-proposta">' +
+         (senzaVoci ? '<p>Questo documento non dà voci in agenda. Puoi conservarlo come promemoria: il testo intero, ' +
+                      'dall\'oggetto alla firma, resta da consultare nella sezione Promemoria.</p>'
+                    : '<p class="aiuto">Puoi anche conservare il testo intero del documento fra i promemoria.</p>') +
+         '<button class="btn' + (senzaVoci ? ' btn-primary' : '') + '" type="button" data-cmd="conserva-promemoria">Conserva come promemoria</button></div>';
+}
+
+/* ---------- copiare ---------- */
+function copiaTesto(t){
+  function riserva(){
+    var a = document.createElement("textarea");
+    a.value = t; a.setAttribute("readonly", ""); a.style.position = "fixed"; a.style.opacity = "0";
+    document.body.appendChild(a); a.select();
+    var ok = false;
+    try{ ok = document.execCommand("copy"); }catch(e){ ok = false; }
+    document.body.removeChild(a);
+    notaFlash(ok ? "Copiato." : "La copia non è riuscita: seleziona il testo a mano.");
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){ notaFlash("Copiato."); }, riserva);
+  }else riserva();
+}
+function formuleDi(capoverso){
+  return String(capoverso).match(/«[^«»]+»/g) || [];
+}
+
+/* ---------- la vista ---------- */
+function metaPromemoria(p){
+  var m = [];
+  if(p.circolare) m.push("Circ. n. " + p.circolare);
+  if(p.protocollo) m.push("Prot. " + p.protocollo + (p.protData ? " del " + p.protData : ""));
+  else if(p.protData) m.push("del " + p.protData);
+  return m.join(" · ");
+}
+function corrispondePromemoria(p, cerca){
+  var parole = senzaAccenti(cerca).split(/\s+/).filter(Boolean);
+  if(!parole.length) return true;
+  var tutto = senzaAccenti([p.titolo, metaPromemoria(p), (p.destinatari || []).join(" "),
+                            (p.capoversi || []).join(" ")].join(" "));
+  return parole.every(function(w){ return tutto.indexOf(w) >= 0; });
+}
+/* il pezzo di testo dove la ricerca ha trovato la prima parola */
+function estrattoPromemoria(p, cerca){
+  var testo = (p.capoversi || []).join(" ").replace(/\s+/g, " ");
+  var w = senzaAccenti(cerca).split(/\s+/).filter(Boolean)[0];
+  var k = w ? senzaAccenti(testo).indexOf(w) : -1;
+  if(k < 0) return testo.slice(0, 180) + (testo.length > 180 ? "…" : "");
+  var da = Math.max(0, k - 60);
+  return (da ? "…" : "") + testo.slice(da, k + 120) + (k + 120 < testo.length ? "…" : "");
+}
+
+function schedaModificaPromemoria(p){
+  return '<div class="pm-modifica" data-pm-id="' + esc(p.id) + '">' +
+    '<div class="campo largo"><label for="pm-titolo">Titolo</label><input id="pm-titolo" value="' + esc(p.titolo) + '"></div>' +
+    '<div class="pm-campi">' +
+    '<div class="campo"><label for="pm-circolare">Circolare n.</label><input id="pm-circolare" value="' + esc(p.circolare || "") + '"></div>' +
+    '<div class="campo"><label for="pm-protocollo">Protocollo</label><input id="pm-protocollo" value="' + esc(p.protocollo || "") + '"></div>' +
+    '<div class="campo"><label for="pm-data">Del</label><input id="pm-data" placeholder="gg/mm/aaaa" value="' + esc(p.protData || "") + '"></div>' +
+    '</div>' +
+    '<div class="campo largo"><label for="pm-destinatari">Destinatari, uno per riga</label>' +
+    '<textarea id="pm-destinatari" rows="3">' + esc((p.destinatari || []).join("\n")) + '</textarea></div>' +
+    '<div class="campo largo"><label for="pm-testo">Testo: una riga vuota separa i capoversi</label>' +
+    '<textarea id="pm-testo" rows="16">' + esc((p.capoversi || []).join("\n\n")) + '</textarea></div>' +
+    '<div class="riga-input"><button class="btn btn-primary" type="button" data-cmd="pm-salva" data-id="' + esc(p.id) + '">Salva</button>' +
+    '<button class="btn" type="button" data-cmd="pm-annulla">Annulla</button></div></div>';
+}
+
+function schedaTestoPromemoria(p){
+  var h = '<div class="pm-testo">';
+  if((p.destinatari || []).length) h += '<p class="pm-dest">' + p.destinatari.map(esc).join("<br>") + '</p>';
+  (p.capoversi || []).forEach(function(c, k){
+    h += '<div class="pm-capoverso"><p>' + esc(c) + '</p>' +
+         '<button class="btn btn-piccolo" type="button" data-cmd="pm-copia" data-id="' + esc(p.id) + '" data-capoverso="' + k + '"' +
+         ' aria-label="Copia il capoverso">Copia</button></div>';
+    formuleDi(c).forEach(function(f, j){
+      h += '<div class="pm-capoverso pm-formula"><p>' + esc(f) + '</p>' +
+           '<button class="btn btn-piccolo" type="button" data-cmd="pm-copia" data-id="' + esc(p.id) + '" data-capoverso="' + k +
+           '" data-formula="' + j + '" aria-label="Copia la formula">Copia la formula</button></div>';
+    });
+  });
+  return h + '</div>';
+}
+
+function disegnaPromemoria(){
+  var el = document.getElementById("v-promemoria");
+  if(!el) return;
+  var tutti = elencoPromemoria(), cerca = VISTA_PROMEMORIA.cerca || "";
+  var trovati = tutti.filter(function(p){ return corrispondePromemoria(p, cerca); });
+  var h = testaVista("Promemoria", "I documenti conservati per intero: istruzioni, procedure, formule da copiare. " +
+                     "Restano finché non li cancelli tu, anche al cambio d'anno.", "");
+  h += '<div class="registro promemoria-vista"><div>';
+  if(!tutti.length){
+    h += '<div class="vuoto"><h2>Nessun promemoria</h2><p>Leggi un documento in Documenti e premi ' +
+         '«Conserva come promemoria».</p></div>';
+  }else if(!trovati.length){
+    h += '<div class="vuoto"><h2>Nessun promemoria trovato</h2><p>Nessun testo contiene «' + esc(cerca) + '».</p></div>';
+  }else{
+    h += '<section class="gruppo"><div class="gruppo-testa"><h2>' + (cerca ? 'Trovati' : 'Tutti') + '</h2>' +
+         '<span class="conta">' + trovati.length + (trovati.length === 1 ? ' promemoria' : ' promemoria') + '</span></div>';
+    trovati.forEach(function(p){
+      var aperto = VISTA_PROMEMORIA.aperto === p.id, modifica = VISTA_PROMEMORIA.modifica === p.id;
+      h += '<article class="pm-voce" data-pm="' + esc(p.id) + '">' +
+           '<h3 class="pm-titolo">' + esc(p.titolo) + '</h3>';
+      var meta = metaPromemoria(p);
+      if(meta) h += '<p class="pm-meta">' + esc(meta) + '</p>';
+      if(modifica) h += schedaModificaPromemoria(p);
+      else if(aperto) h += schedaTestoPromemoria(p);
+      else h += '<p class="pm-estratto">' + esc(estrattoPromemoria(p, cerca)) + '</p>';
+      if(!modifica){
+        h += '<div class="azioni pm-azioni">' +
+             '<button class="btn btn-piccolo" type="button" data-cmd="pm-apri" data-id="' + esc(p.id) + '" aria-expanded="' + aperto + '">' +
+             (aperto ? 'Chiudi' : 'Apri il testo') + '</button>' +
+             '<button class="btn btn-piccolo" type="button" data-cmd="pm-modifica" data-id="' + esc(p.id) + '">Modifica</button>';
+        if(VISTA_PROMEMORIA.elimina === p.id){
+          h += '<button class="btn btn-piccolo btn-pericolo" type="button" data-cmd="pm-elimina-si" data-id="' + esc(p.id) + '">Elimina davvero</button>' +
+               '<button class="btn btn-piccolo" type="button" data-cmd="pm-elimina-no">Tienilo</button>';
+        }else{
+          h += '<button class="btn btn-piccolo" type="button" data-cmd="pm-elimina" data-id="' + esc(p.id) + '">Elimina</button>';
+        }
+        h += '</div>';
+      }
+      h += '</article>';
+    });
+    h += '</section>';
+  }
+  h += '</div><aside class="registro-comandi" aria-label="Ricerca nei promemoria">' +
+       '<label for="pm-cerca" class="aiuto">Cerca nel testo</label>' +
+       '<input id="pm-cerca" type="search" autocomplete="off" value="' + esc(cerca) + '" placeholder="parole…">' +
+       '</aside></div>';
+  conservaFuoco(el, function(){ el.innerHTML = h; });
+}
+
+function salvaModificaPromemoria(id){
+  var p = stato.promemoria && stato.promemoria[id];
+  if(!p) return;
+  function val(k){ var e = document.getElementById(k); return e ? e.value : ""; }
+  var nuovo = Object.assign({}, p, {
+    titolo: val("pm-titolo").trim() || p.titolo,
+    circolare: val("pm-circolare").trim(),
+    protocollo: val("pm-protocollo").trim(),
+    protData: val("pm-data").trim(),
+    destinatari: val("pm-destinatari").split(/\r?\n/).map(function(s){ return s.trim(); }).filter(Boolean),
+    capoversi: val("pm-testo").replace(/\r/g, "").split(/\n\s*\n/).map(function(s){ return s.trim(); }).filter(Boolean)
+  });
+  VISTA_PROMEMORIA.modifica = "";
+  VISTA_PROMEMORIA.aperto = id;
+  salvaPromemoria(nuovo);
+}
+
+document.addEventListener("input", function(ev){
+  if(ev.target && ev.target.id === "pm-cerca"){
+    VISTA_PROMEMORIA.cerca = ev.target.value;
+    disegnaPromemoria();
+  }
+});
+
+document.addEventListener("click", function(ev){
+  var b = ev.target.closest("[data-cmd]");
+  if(!b) return;
+  var c = b.dataset.cmd, id = b.dataset.id;
+  if(c === "conserva-promemoria") conservaComePromemoria();
+  else if(c === "pm-vai"){
+    VISTA_PROMEMORIA.aperto = id; VISTA_PROMEMORIA.cerca = "";
+    cambiaVista("promemoria");
+  }
+  else if(c === "pm-apri"){
+    VISTA_PROMEMORIA.aperto = VISTA_PROMEMORIA.aperto === id ? "" : id;
+    disegnaPromemoria();
+  }
+  else if(c === "pm-modifica"){ VISTA_PROMEMORIA.modifica = id; VISTA_PROMEMORIA.elimina = ""; disegnaPromemoria(); }
+  else if(c === "pm-annulla"){ VISTA_PROMEMORIA.modifica = ""; disegnaPromemoria(); }
+  else if(c === "pm-salva") salvaModificaPromemoria(id);
+  else if(c === "pm-elimina"){ VISTA_PROMEMORIA.elimina = id; disegnaPromemoria(); }
+  else if(c === "pm-elimina-no"){ VISTA_PROMEMORIA.elimina = ""; disegnaPromemoria(); }
+  else if(c === "pm-elimina-si"){
+    VISTA_PROMEMORIA.elimina = "";
+    if(VISTA_PROMEMORIA.aperto === id) VISTA_PROMEMORIA.aperto = "";
+    eliminaPromemoria(id);
+  }
+  else if(c === "pm-copia"){
+    var p = stato.promemoria && stato.promemoria[id];
+    if(!p) return;
+    var cap = (p.capoversi || [])[Number(b.dataset.capoverso)] || "";
+    copiaTesto(b.dataset.formula !== undefined ? (formuleDi(cap)[Number(b.dataset.formula)] || "") : cap);
+  }
+});
+
 /* ===== esportazioni.js ============================================ */
 /* ============ esportazioni ============ */
 function scarica(nome, contenuto, tipoTesto){
@@ -8863,7 +9669,7 @@ function esportaPdf(){
 }
 
 function esportaJson(){
-  scarica("agenda-docente-"+oggiISO()+".json", JSON.stringify({voci:stato.voci, config:stato.config, esportato:new Date().toISOString()}, null, 2));
+  scarica("agenda-docente-"+oggiISO()+".json", JSON.stringify({voci:stato.voci, promemoria:stato.promemoria||{}, config:stato.config, esportato:new Date().toISOString()}, null, 2));
 }
 function esportaCsv(){
   var col=["data","ora","classe","materia","tipo","titolo","stato","periodo","fonte","link","alunni","dettagli"];
@@ -8898,6 +9704,21 @@ function ripristinaBackup(testo){
 
   stato.voci = voci;
   stato.cancellate = dati.cancellate || {};
+  /* i promemoria li cancella soltanto il docente: un backup che non li porta,
+     perché fatto prima che esistessero, lascia quelli che ci sono */
+  if(dati.promemoria && typeof dati.promemoria === "object"){
+    var pm = {};
+    Object.keys(dati.promemoria).forEach(function(k){
+      var p = dati.promemoria[k];
+      if(!p || !p.titolo) return;
+      p.id = p.id || k;
+      if(!p.creato) p.creato = Date.now();
+      if(!p.aggiornato) p.aggiornato = p.creato;
+      pm[p.id] = p;
+      if(stato.cancellate) delete stato.cancellate[p.id];
+    });
+    stato.promemoria = Object.assign({}, stato.promemoria || {}, pm);
+  }
   if(dati.config && typeof dati.config === "object") stato.config = Object.assign(stato.config, dati.config);
   /* un ripristino è una modifica fatta adesso: deve vincere sul remoto */
   stato.config.aggiornato = Date.now();
@@ -9648,7 +10469,7 @@ function backupAnno(anni){
   var voci = {};
   elencoVoci().forEach(function(v){ if(v.data && v.data <= fine) voci[v.id] = v; });
   var nome = "agenda-docente-" + anni[anni.length - 1].replace("/", "-") + ".json";
-  scarica(nome, JSON.stringify({voci: voci, config: stato.config, anno: anni[anni.length - 1],
+  scarica(nome, JSON.stringify({voci: voci, promemoria: stato.promemoria || {}, config: stato.config, anno: anni[anni.length - 1],
                                 esportato: new Date().toISOString()}, null, 2));
   return nome;
 }
@@ -10378,6 +11199,11 @@ window.agenda = {
   ripristinaBackup: ripristinaBackup,
   archivioLocaleVuoto: archivioLocaleVuoto,
   lettura: function(){ return STATO_IMPORT; },
+  campiDalTimbro: campiDalTimbro,
+  elencoPromemoria: elencoPromemoria,
+  salvaPromemoria: salvaPromemoria,
+  eliminaPromemoria: eliminaPromemoria,
+  promemoriaDaLettura: promemoriaDaLettura,
   leggiARegole: leggiARegole,
   fondiArchivi: fondiArchivi,
   archivioCorrente: archivioCorrente,
