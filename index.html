@@ -2028,8 +2028,8 @@ function ordinaPerData(a,b){
    ARCHIVIO
    L'archivio vero è il file dati/agenda.json nell'archivio GitHub
    privato del docente. Quello che sta nel browser è la copia di
-   lavoro: le voci e la configurazione in localStorage, e i
-   documenti caricati in IndexedDB, che regge i file grandi.
+   lavoro: le voci, i promemoria e la configurazione in localStorage,
+   e la notizia dei documenti letti in IndexedDB, senza il file.
 
    Nel file dell'applicazione non c'è nessun dato: un'agenda aperta
    su un dispositivo nuovo parte vuota e chiede o la chiave di
@@ -2252,6 +2252,17 @@ function dopoLePulizie(esito, a, b){
       if(!esito.cancellate[k] || esito.cancellate[k] < quando) esito.cancellate[k] = quando;
     }
   });
+  /* lo stesso per i testi letti in un anno pulito e non segnati da tenere */
+  Object.keys(esito.promemoria || {}).forEach(function(k){
+    var p = esito.promemoria[k];
+    if(!annoDelPromemoria(p)) return;
+    var giorno = giornoISO(p.letto || p.creato), quando = 0;
+    anni.forEach(function(x){ if(giorno <= fineAnnoScolastico(x) && pul[x] > quando) quando = pul[x]; });
+    if(quando && (p.aggiornato || 0) <= quando){
+      delete esito.promemoria[k];
+      if(!esito.cancellate[k] || esito.cancellate[k] < quando) esito.cancellate[k] = quando;
+    }
+  });
 }
 
 /* Anche la configurazione vince per il momento della sua ultima modifica, e
@@ -2269,10 +2280,9 @@ function configPiuRecente(a, b){
 }
 
 /* ---------- i documenti caricati ---------- */
-/* Stanno in IndexedDB perché sono grandi: localStorage non li reggerebbe.
-   Di ciascuno si conserva il file, il suo esito di lettura e il momento del
-   caricamento. Passati i giorni stabiliti il file se ne va e l'esito resta,
-   perché occupa pochissimo e serve a non rileggere due volte la stessa cosa. */
+/* Stanno in IndexedDB. Del documento si conserva soltanto il nome, il
+   momento della lettura e il suo esito, che occupa pochissimo: il file
+   non si conserva mai, e il testo va fra i promemoria. */
 var DB_DOCUMENTI = "agenda-documenti";
 var ARCHIVIO_DOCUMENTI = "documenti";
 var dbDocPronto = null;
@@ -2333,11 +2343,11 @@ function eliminaDocumento(id){
   return conArchivioDocumenti("readwrite", function(st){ st.delete(id); return id; });
 }
 
-/* toglie il file ai documenti scaduti e lascia l'esito della lettura */
+/* toglie il file ai documenti che lo avevano ancora, conservati quando
+   l'agenda teneva i file per qualche giorno: oggi non lo tiene mai */
 function puliziaDocumenti(){
-  var limite = Date.now() - giorniDocumenti() * 86400000;
   return elencoDocumenti().then(function(tutti){
-    var scaduti = tutti.filter(function(d){ return (d.caricato || 0) < limite && d.dati; });
+    var scaduti = tutti.filter(function(d){ return d.dati; });
     if(!scaduti.length) return 0;
     return conArchivioDocumenti("readwrite", function(st){
       scaduti.forEach(function(d){
@@ -2371,8 +2381,13 @@ function scaricaFile(nome, contenuto, tipo){
 /* ============================================================
    L'ARCHIVIO SU GITHUB
    I dati del docente stanno in un archivio GitHub privato suo, in
-   un file solo: dati/agenda.json. È quello l'archivio vero, ed è da
-   lì che i dispositivi restano allineati fra loro.
+   due file: dati/agenda.json con le voci e la configurazione, e
+   dati/promemoria.json con i testi dei documenti letti. È quello
+   l'archivio vero, ed è da lì che i dispositivi restano allineati fra
+   loro. I promemoria hanno il file loro perché pesano: un anno di
+   circolari fa qualche centinaio di kB, e non devono viaggiare a ogni
+   voce spuntata. Si fondono, si cancellano e vanno nei backup come le
+   voci.
 
    Il file dell'applicazione non contiene niente di personale, e la
    chiave di accesso non compare in nessun file del progetto: sta
@@ -2385,6 +2400,7 @@ function scaricaFile(nome, contenuto, tipo){
 
 var CHIAVE_GITHUB = "agenda-docente-github";
 var PERCORSO_REMOTO = "dati/agenda.json";
+var PERCORSO_PROMEMORIA = "dati/promemoria.json";
 var API_GITHUB = "https://api.github.com";
 var RITARDO_SINCRONIA = 2000;    /* modifiche ravvicinate, una scrittura sola */
 var CONFLITTI_MAX = 3;
@@ -2486,39 +2502,118 @@ function chiamaGitHub(metodo, percorso, corpo, impostazioni){
   });
 }
 
+/* Il contenuto di un file del deposito. Oltre 1 MB l'interfaccia di GitHub
+   non lo dà insieme allo sha: si chiede allora il file grezzo. */
+function contenutoRemoto(r, percorso, impostazioni){
+  if(r.dati && r.dati.content) return Promise.resolve(daBase64(r.dati.content));
+  if(!(r.dati && (r.dati.encoding === "none" || r.dati.size > 0))) return Promise.resolve("");
+  var c = impostazioni || impostazioniGitHub();
+  var url = API_GITHUB + "/repos/" + encodeURIComponent(c.proprietario) + "/" + encodeURIComponent(c.archivio) +
+            "/contents/" + percorso + "?ref=" + encodeURIComponent(c.ramo);
+  return fetch(url, {headers: {"Authorization": "Bearer " + c.chiave, "Accept": "application/vnd.github.raw",
+                               "X-GitHub-Api-Version": "2022-11-28"}})
+    .then(function(x){
+      if(x.status !== 200) throw new Error("lettura non riuscita (" + x.status + ")");
+      return x.blob();
+    }, function(){ throw new Error("rete non raggiungibile"); })
+    .then(function(b){ return b.text(); });
+}
+
 function leggiRemoto(impostazioni){
   return chiamaGitHub("GET", PERCORSO_REMOTO, null, impostazioni).then(function(r){
     if(r.stato === 404) return {archivio: archivioVuoto(), sha: "", nuovo: true};
     if(r.stato === 401 || r.stato === 403) throw new Error("chiave rifiutata da GitHub");
     if(r.stato !== 200) throw new Error("lettura non riuscita (" + r.stato + ")");
-    var testo = daBase64((r.dati && r.dati.content) || "");
-    var a;
-    try{ a = JSON.parse(testo); }catch(e){ throw new Error("il file remoto non è leggibile"); }
-    if(!a || typeof a !== "object") a = archivioVuoto();
-    a.voci = a.voci || {};
-    a.promemoria = a.promemoria || {};
-    a.config = a.config || {};
-    a.cancellate = a.cancellate || {};
-    a.versione = a.versione || 1;
-    a.aggiornato = a.aggiornato || 0;
-    return {archivio: a, sha: (r.dati && r.dati.sha) || "", nuovo: false};
+    return contenutoRemoto(r, PERCORSO_REMOTO, impostazioni).then(function(testo){
+      var a;
+      try{ a = JSON.parse(testo); }catch(e){ throw new Error("il file remoto non è leggibile"); }
+      if(!a || typeof a !== "object") a = archivioVuoto();
+      a.voci = a.voci || {};
+      a.promemoria = a.promemoria || {};
+      a.config = a.config || {};
+      a.cancellate = a.cancellate || {};
+      a.versione = a.versione || 1;
+      a.aggiornato = a.aggiornato || 0;
+      return {archivio: a, sha: (r.dati && r.dati.sha) || "", nuovo: false};
+    });
   });
 }
 
-function scriviRemoto(archivio, sha, messaggio, impostazioni){
+/* il file dei promemoria: {versione, promemoria, cancellate}, dove le
+   cancellate sono soltanto quelle dei promemoria */
+function leggiRemotoPromemoria(impostazioni){
+  return chiamaGitHub("GET", PERCORSO_PROMEMORIA, null, impostazioni).then(function(r){
+    if(r.stato === 404) return {promemoria: {}, cancellate: {}, sha: "", testo: ""};
+    if(r.stato === 401 || r.stato === 403) throw new Error("chiave rifiutata da GitHub");
+    if(r.stato !== 200) throw new Error("lettura dei promemoria non riuscita (" + r.stato + ")");
+    return contenutoRemoto(r, PERCORSO_PROMEMORIA, impostazioni).then(function(testo){
+      var f;
+      try{ f = JSON.parse(testo); }catch(e){ throw new Error("il file remoto dei promemoria non è leggibile"); }
+      return {promemoria: (f && f.promemoria) || {}, cancellate: (f && f.cancellate) || {},
+              sha: (r.dati && r.dati.sha) || "", testo: testo};
+    });
+  });
+}
+
+/* I due file letti insieme danno l'archivio intero. I promemoria che
+   stanno ancora nel file dell'agenda, scritti prima che avessero il file
+   loro, si uniscono a quelli del file nuovo: vince il più recente. */
+function leggiTuttoRemoto(impostazioni){
+  return Promise.all([leggiRemoto(impostazioni), leggiRemotoPromemoria(impostazioni)]).then(function(x){
+    var a = x[0].archivio, f = x[1];
+    Object.keys(f.promemoria).forEach(function(k){
+      var p = f.promemoria[k], q = a.promemoria[k];
+      if(p && (!q || (p.aggiornato || 0) >= (q.aggiornato || 0))) a.promemoria[k] = p;
+    });
+    Object.keys(f.cancellate).forEach(function(k){
+      if(!a.cancellate[k] || f.cancellate[k] > a.cancellate[k]) a.cancellate[k] = f.cancellate[k];
+    });
+    return {archivio: a, sha: x[0].sha, nuovo: x[0].nuovo && !f.sha, promemoria: f};
+  });
+}
+
+/* l'archivio intero si divide nei due file: le voci e la configurazione da
+   una parte, i promemoria con le loro cancellazioni dall'altra */
+function eUnPromemoria(id){
+  return /^promemoria-/.test(id);
+}
+function partiArchivio(a){
+  var agenda = {versione: a.versione || 1, aggiornato: a.aggiornato || 0, cancellate: {}, voci: a.voci || {}, config: a.config || {}};
+  var pm = {versione: 1, promemoria: a.promemoria || {}, cancellate: {}};
+  Object.keys(a.cancellate || {}).forEach(function(k){
+    (eUnPromemoria(k) ? pm : agenda).cancellate[k] = a.cancellate[k];
+  });
+  return {agenda: agenda, promemoria: pm};
+}
+
+function scriviFileRemoto(percorso, testo, sha, messaggio, impostazioni){
   var c = impostazioni || impostazioniGitHub();
   var corpo = {
     message: messaggio || ("agenda " + new Date().toISOString()),
-    content: inBase64(JSON.stringify(archivio, null, 1)),
+    content: inBase64(testo),
     branch: c ? c.ramo : RAMO_PREDEFINITO
   };
   if(sha) corpo.sha = sha;
-  return chiamaGitHub("PUT", PERCORSO_REMOTO, corpo, impostazioni).then(function(r){
+  return chiamaGitHub("PUT", percorso, corpo, impostazioni).then(function(r){
     if(r.stato === 409 || r.stato === 422) return {conflitto: true};
     if(r.stato === 401 || r.stato === 403) throw new Error("chiave rifiutata da GitHub");
     if(r.stato !== 200 && r.stato !== 201) throw new Error("scrittura non riuscita (" + r.stato + ")");
     return {conflitto: false, sha: (r.dati && r.dati.content && r.dati.content.sha) || ""};
   });
+}
+function scriviRemoto(archivio, sha, messaggio, impostazioni){
+  return scriviFileRemoto(PERCORSO_REMOTO, JSON.stringify(archivio, null, 1), sha, messaggio, impostazioni);
+}
+
+/* Il file dei promemoria si riscrive soltanto quando cambia: i testi sono
+   la parte pesante dell'archivio, e non devono viaggiare a ogni voce
+   spuntata. Si scrive per primo, così un giro interrotto a metà non toglie
+   i promemoria dal file dell'agenda prima che stiano nel loro. */
+function scriviPromemoriaRemoti(pm, letto, messaggio, impostazioni){
+  var testo = JSON.stringify(pm, null, 1);
+  var vuoto = !Object.keys(pm.promemoria).length && !Object.keys(pm.cancellate).length;
+  if(testo === letto.testo || (!letto.sha && vuoto)) return Promise.resolve({conflitto: false, sha: letto.sha});
+  return scriviFileRemoto(PERCORSO_PROMEMORIA, testo, letto.sha, messaggio, impostazioni);
 }
 
 /* ---------- il giro completo ---------- */
@@ -2557,7 +2652,7 @@ function primaLetturaDaGitHub(impostazioni){
   var c = impostazioni || impostazioniGitHub();
   if(!c) return Promise.resolve({esito: "senza chiave"});
   stato.sync.messaggio = "";
-  return leggiRemoto(c).then(function(r){
+  return leggiTuttoRemoto(c).then(function(r){
     applicaArchivio(r.archivio);
     stato.sync.sha = r.sha;
     stato.sync.ultimo = Date.now();
@@ -2589,12 +2684,15 @@ function sincronizzaOra(){
 
   function prova(){
     giro++;
-    return leggiRemoto().then(function(r){
+    return leggiTuttoRemoto().then(function(r){
       visto = stato.sync.modifiche || 0;
       var fuso = fondiArchivi(r.archivio, archivioCorrente());
       fuso.aggiornato = Date.now();
       applicaArchivio(fuso);
-      return scriviRemoto(fuso, r.sha, "agenda del docente, " + new Date().toLocaleString("it-IT")).then(function(w){
+      var parti = partiArchivio(fuso), messaggio = "agenda del docente, " + new Date().toLocaleString("it-IT");
+      return scriviPromemoriaRemoti(parti.promemoria, r.promemoria, messaggio).then(function(wp){
+        return wp.conflitto ? wp : scriviRemoto(parti.agenda, r.sha, messaggio);
+      }).then(function(w){
         if(w.conflitto){
           if(giro >= CONFLITTI_MAX){
             throw new Error("un altro dispositivo sta scrivendo nello stesso momento: riprova fra poco");
@@ -4007,10 +4105,8 @@ function filtraCoordinatori(testo){
 
 function riquadroDocumenti(){
   var h='<section class="gruppo"><div class="gruppo-testa"><h2>Documenti caricati</h2></div><div class="corpo-pannello">';
-  h+='<p>I documenti letti restano nel browser insieme al loro esito di lettura, e si cancellano da sé '+
-     'dopo il numero di giorni scritto qui sotto. L\'esito, che occupa pochissimo, resta.</p>';
-  h+='<div class="campo"><label for="in-giorni-doc">Giorni di conservazione</label>'+
-     '<input id="in-giorni-doc" type="number" min="1" max="3650" step="1" value="'+esc(giorniDocumenti())+'"></div>';
+  h+='<p>Dei documenti letti l\'agenda non conserva mai il file, né qui né su GitHub: il loro testo resta '+
+     'nella sezione Promemoria.</p>';
   h+='<div class="campo"><label for="in-verb-cdi">Numero del prossimo verbale del Consiglio d\'Istituto</label>'+
      '<input id="in-verb-cdi" type="text" inputmode="numeric" placeholder="14" value="'+esc(stato.config.prossimoVerbaleCdI||"")+'"></div>';
   h+='<p class="aiuto">La numerazione dei verbali prosegue senza azzerarsi al cambio di anno scolastico: '+
@@ -8361,7 +8457,25 @@ function conservaFuoco(el, ridisegna){
   var id = (a && el.contains(a) && a.id) ? a.id : "";
   var da = 0, a2 = 0;
   if(id){ try{ da = a.selectionStart; a2 = a.selectionEnd; }catch(e){} }
+  /* Il ridisegno sostituisce tutto: i riquadri che scorrono tornerebbero in
+     cima, e quello che si apre più in alto spingerebbe in giù il testo che
+     il docente sta guardando. Si annota dove stavano e si rimettono lì. */
+  var scorrono = {};
+  Array.prototype.forEach.call(el.querySelectorAll("[data-scorre]"), function(n){ scorrono[n.getAttribute("data-scorre")] = n.scrollTop; });
+  var ancora = el.querySelector("[data-ancora]"), sopra = null;
+  if(ancora){
+    var r = ancora.getBoundingClientRect();
+    if(r.height && r.bottom > 0 && r.top < window.innerHeight) sopra = r.top;
+  }
   ridisegna();
+  Array.prototype.forEach.call(el.querySelectorAll("[data-scorre]"), function(n){
+    var k = n.getAttribute("data-scorre");
+    if(scorrono[k] !== undefined) n.scrollTop = scorrono[k];
+  });
+  if(sopra !== null){
+    var nuova = el.querySelector("[data-ancora]");
+    if(nuova) window.scrollBy(0, nuova.getBoundingClientRect().top - sopra);
+  }
   if(!id) return;
   var n = document.getElementById(id);
   if(!n) return;
@@ -8411,6 +8525,7 @@ async function leggiDocumento(file){
     };
     STATO_IMPORT.testo = testo;
     STATO_IMPORT.fase = "fatto";
+    conservaLetto();
     disegna();
     return;
   }
@@ -8424,17 +8539,15 @@ async function leggiDocumento(file){
     return;
   }
 
-  /* il documento si conserva con il suo esito, e scade da sé */
+  /* del documento resta soltanto la notizia della lettura, con il suo esito:
+     il file non si conserva mai, né qui né su GitHub */
   try{
-    var dati = await file.arrayBuffer();
     STATO_IMPORT.idDocumento = "doc-" + Date.now().toString(36);
     await salvaDocumento({
       id: STATO_IMPORT.idDocumento,
       nome: file.name || "documento",
       tipo: file.type || "",
-      dimensione: dati.byteLength,
       caricato: Date.now(),
-      dati: dati,
       esito: null
     });
   }catch(e){ /* l'archivio dei documenti non è indispensabile: si tira avanti */ }
@@ -8499,6 +8612,8 @@ function leggiTestoARegole(testo, nome){
     if(v.corretta || v.aMano) STATO_IMPORT.spuntate[i] = true;
   });
   STATO_IMPORT.fase = lettura.voci.length ? "conferma" : "fatto";
+  /* il testo si conserva da sé fra i promemoria, senza che il docente prema nulla */
+  conservaLetto();
 
   if(STATO_IMPORT.idDocumento) segnaEsitoDocumento(STATO_IMPORT.idDocumento, lettura);
   disegna();
@@ -8867,10 +8982,10 @@ function disegnaDocumenti(){
       if(L && STATO_IMPORT.fase === "conferma") h += schedaConferma(L);
       if(L && STATO_IMPORT.fase === "fatto") h += schedaScritte();
     }
-    if(L && STATO_IMPORT.testo && (STATO_IMPORT.fase === "conferma" || STATO_IMPORT.fase === "fatto")) h += messaggioPromemoria(L);
+    if(STATO_IMPORT.testo && (STATO_IMPORT.fase === "conferma" || STATO_IMPORT.fase === "fatto")) h += messaggioPromemoria();
     if(L) h += schedaResti(L);
     h += testoGuidato();
-    h += '</div><aside class="registro-comandi comandi-lettura" aria-label="Comandi della lettura">' + comandiLettura(L) + '</aside></div>';
+    h += '</div><aside class="registro-comandi comandi-lettura" data-scorre="comandi-lettura" aria-label="Comandi della lettura">' + comandiLettura(L) + '</aside></div>';
     h += '</div></section>';
   }
 
@@ -9215,14 +9330,16 @@ function schedaComposizione(){
 /* ===== promemoria.js ============================================== */
 /* ============================================================
    PROMEMORIA
-   Un documento che non dà voci in agenda, come una circolare di
-   istruzioni, si conserva per intero: il testo dall'oggetto alla
-   firma, senza l'intestazione della scuola, con i suoi capoversi,
-   le numerazioni, gli elenchi e le formule tra « » così come sono.
-   Lo stesso si può fare con ogni documento letto.
+   Ogni documento letto si conserva da sé, nel momento della
+   lettura, per intero: il testo dall'oggetto alla firma, senza
+   l'intestazione della scuola, con i suoi capoversi, le numerazioni,
+   gli elenchi e le formule tra « » così come sono. Il file originale
+   non si conserva mai.
    I promemoria stanno nell'archivio accanto alle voci: viaggiano su
-   GitHub, entrano nei backup e la pulizia del 1° settembre non li
-   tocca. Li cancella soltanto il docente.
+   GitHub, nel file loro dati/promemoria.json, ed entrano nei backup.
+   Al 1° settembre quelli letti nell'anno concluso se ne vanno con il
+   resto dell'anno, salvo quelli segnati «Tieni negli anni
+   successivi»; quelli scritti a mano li cancella soltanto il docente.
    ============================================================ */
 
 var VISTA_PROMEMORIA = {cerca: "", aperto: "", modifica: "", elimina: "", bozza: null};
@@ -9439,42 +9556,48 @@ function eliminaPromemoria(id){
   disegna();
 }
 
-/* dalla schermata di lettura: conserva il documento appena letto */
-function conservaComePromemoria(){
+/* Ogni documento letto si conserva da sé, nel momento stesso della lettura:
+   soltanto il testo, mai il file. Lo stesso documento riletto aggiorna il
+   suo promemoria: lo ritrova dall'identificativo, o dal nome del file con lo
+   stesso titolo quando nel frattempo è cambiato il protocollo. Restano la
+   data della prima conservazione e il segno «Tieni negli anni successivi». */
+function conservaLetto(){
   var L = STATO_IMPORT.lettura;
   if(!STATO_IMPORT.testo) return "";
   var pos = STATO_IMPORT.posizioni && STATO_IMPORT.posizioni.testo === STATO_IMPORT.testo ? STATO_IMPORT.posizioni.righe : null;
   var p = promemoriaDaLettura(STATO_IMPORT.testo, pos, L, STATO_IMPORT.nomeFile);
-  var id = idPromemoria(p);
-  if(stato.promemoria && stato.promemoria[id]){ STATO_IMPORT.promemoria = id; disegna(); return id; }
+  var tutti = stato.promemoria || {};
+  var id = STATO_IMPORT.promemoria && tutti[STATO_IMPORT.promemoria] ? STATO_IMPORT.promemoria : idPromemoria(p);
+  if(!tutti[id]){
+    var stesso = elencoPromemoria().filter(function(x){ return x.auto && x.fonte && x.fonte === p.fonte && x.titolo === p.titolo; })[0];
+    if(stesso) id = stesso.id;
+  }
+  var gia = tutti[id];
+  p.id = id;
+  p.auto = true;
+  p.letto = Date.now();
+  if(gia){
+    p.creato = gia.creato;
+    if(gia.tieni) p.tieni = gia.tieni;
+  }
   STATO_IMPORT.promemoria = salvaPromemoria(p);
-  notaFlash("Conservato fra i promemoria.");
   return STATO_IMPORT.promemoria;
 }
 
-/* il promemoria già conservato da questo documento, se c'è */
-function promemoriaGiaConservato(L){
-  var gia = STATO_IMPORT.promemoria && stato.promemoria && stato.promemoria[STATO_IMPORT.promemoria];
-  if(!gia && stato.promemoria && STATO_IMPORT.testo){
-    var pos = STATO_IMPORT.posizioni && STATO_IMPORT.posizioni.testo === STATO_IMPORT.testo ? STATO_IMPORT.posizioni.righe : null;
-    var id = idPromemoria(promemoriaDaLettura(STATO_IMPORT.testo, pos, L, STATO_IMPORT.nomeFile));
-    if(stato.promemoria[id]){ STATO_IMPORT.promemoria = id; gia = stato.promemoria[id]; }
-  }
-  return gia || null;
+/* il promemoria di questo documento, se c'è */
+function promemoriaGiaConservato(){
+  var id = STATO_IMPORT.promemoria;
+  return (id && stato.promemoria && stato.promemoria[id]) || null;
 }
 /* il messaggio sta nel contenuto della lettura, il pulsante nella colonna */
-function messaggioPromemoria(L){
-  if(promemoriaGiaConservato(L)) return '<p class="aiuto pm-messaggio">Questo documento è fra i promemoria.</p>';
-  return !L.voci.length
-    ? '<p class="pm-messaggio">Questo documento non dà voci in agenda. Puoi conservarlo come promemoria: il testo intero, ' +
-      'dall\'oggetto alla firma, resta da consultare nella sezione Promemoria.</p>'
-    : '<p class="aiuto pm-messaggio">Puoi anche conservare il testo intero del documento fra i promemoria.</p>';
+function messaggioPromemoria(){
+  if(!promemoriaGiaConservato()) return "";
+  return '<p class="aiuto pm-messaggio">Il testo di questo documento è conservato fra i promemoria.</p>';
 }
-function comandoPromemoria(L){
-  var gia = promemoriaGiaConservato(L);
-  if(gia) return '<div class="pm-proposta"><button class="btn btn-piccolo" type="button" data-cmd="pm-vai" data-id="' + esc(gia.id) + '">Apri il promemoria</button></div>';
-  return '<div class="pm-proposta"><button class="btn' + (!L.voci.length ? ' btn-primary' : '') +
-         '" type="button" data-cmd="conserva-promemoria">Conserva come promemoria</button></div>';
+function comandoPromemoria(){
+  var gia = promemoriaGiaConservato();
+  if(!gia) return "";
+  return '<div class="pm-proposta"><button class="btn btn-piccolo" type="button" data-cmd="pm-vai" data-id="' + esc(gia.id) + '">Apri il promemoria</button></div>';
 }
 
 /* ---------- copiare ---------- */
@@ -9497,12 +9620,29 @@ function formuleDi(capoverso){
 }
 
 /* ---------- la vista ---------- */
+/* di ogni testo: il file da cui viene, il numero di circolare, il protocollo
+   con la data e il giorno della lettura. Quello che manca si dice con un
+   trattino, così si vede che manca. */
+function giornoDiLettura(ms){
+  var d = new Date(ms);
+  return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear();
+}
+function campiMetaPromemoria(p){
+  return [
+    ["File", p.fonte || "—"],
+    ["Circ. n.", p.circolare || "—"],
+    ["Prot.", p.protocollo ? p.protocollo + (p.protData ? " del " + p.protData : "") : (p.protData ? "del " + p.protData : "—")],
+    ["Letto il", p.letto ? giornoDiLettura(p.letto) : "—"]
+  ];
+}
 function metaPromemoria(p){
-  var m = [];
-  if(p.circolare) m.push("Circ. n. " + p.circolare);
-  if(p.protocollo) m.push("Prot. " + p.protocollo + (p.protData ? " del " + p.protData : ""));
-  else if(p.protData) m.push("del " + p.protData);
-  return m.join(" · ");
+  return campiMetaPromemoria(p).map(function(c){ return c[0] + " " + c[1]; }).join(" · ");
+}
+function schedaMetaPromemoria(p){
+  return '<p class="pm-meta">' + campiMetaPromemoria(p).map(function(c){
+    return '<span class="pm-meta-' + esc(c[0].replace(/[^A-Za-z]/g, "").toLowerCase()) + '">' + esc(c[0]) + ' ' + esc(c[1]) + '</span>';
+  }).join(" · ") + '</p>' +
+  (p.auto && p.tieni ? '<p class="pm-meta pm-tenuto">Si tiene negli anni successivi.</p>' : '');
 }
 function corrispondePromemoria(p, cerca){
   var parole = senzaAccenti(cerca).split(/\s+/).filter(Boolean);
@@ -9568,8 +9708,9 @@ function disegnaPromemoria(){
   if(!el) return;
   var tutti = elencoPromemoria(), cerca = VISTA_PROMEMORIA.cerca || "";
   var trovati = tutti.filter(function(p){ return corrispondePromemoria(p, cerca); });
-  var h = testaVista("Promemoria", "I documenti conservati per intero: istruzioni, procedure, formule da copiare. " +
-                     "Restano finché non li cancelli tu, anche al cambio d'anno.", "");
+  var h = testaVista("Promemoria", "Il testo di ogni documento letto, conservato da sé: istruzioni, procedure, formule da copiare. " +
+                     "Al 1° settembre quelli letti nell'anno concluso si propongono per la cancellazione, insieme al resto " +
+                     "dell'anno; restano quelli segnati «Tieni negli anni successivi» e quelli scritti a mano.", "");
   h += '<div class="registro promemoria-vista"><div>';
   /* un promemoria nuovo, da un passaggio scelto nel documento o da scrivere
      a mano per una scansione: si conserva soltanto con «Conserva» */
@@ -9581,8 +9722,8 @@ function disegnaPromemoria(){
          '<button class="btn btn-piccolo" type="button" data-cmd="pm-annulla-bozza">Annulla</button></div></article></section>';
   }
   if(!tutti.length){
-    if(!bz) h += '<div class="vuoto"><h2>Nessun promemoria</h2><p>Leggi un documento in Documenti e premi ' +
-                 '«Conserva come promemoria».</p></div>';
+    if(!bz) h += '<div class="vuoto"><h2>Nessun promemoria</h2><p>Leggi un documento in Documenti: ' +
+                 'il suo testo si conserva qui da sé.</p></div>';
   }else if(!trovati.length){
     h += '<div class="vuoto"><h2>Nessun promemoria trovato</h2><p>Nessun testo contiene «' + esc(cerca) + '».</p></div>';
   }else{
@@ -9592,8 +9733,7 @@ function disegnaPromemoria(){
       var aperto = VISTA_PROMEMORIA.aperto === p.id, modifica = VISTA_PROMEMORIA.modifica === p.id;
       h += '<article class="pm-voce" data-pm="' + esc(p.id) + '"><div class="pm-corpo">' +
            '<h3 class="pm-titolo">' + esc(p.titolo) + '</h3>';
-      var meta = metaPromemoria(p);
-      if(meta) h += '<p class="pm-meta">' + esc(meta) + '</p>';
+      h += schedaMetaPromemoria(p);
       if(modifica) h += schedaModificaPromemoria(p);
       else if(aperto) h += schedaTestoPromemoria(p);
       else h += '<p class="pm-estratto">' + esc(estrattoPromemoria(p, cerca)) + '</p>';
@@ -9606,6 +9746,11 @@ function disegnaPromemoria(){
         h += '<button class="btn btn-piccolo" type="button" data-cmd="pm-apri" data-id="' + esc(p.id) + '" aria-expanded="' + aperto + '">' +
              (aperto ? 'Chiudi' : 'Apri il testo') + '</button>' +
              '<button class="btn btn-piccolo" type="button" data-cmd="pm-modifica" data-id="' + esc(p.id) + '">Modifica</button>';
+        /* soltanto i testi conservati da sé hanno un anno: quelli scritti a mano restano comunque */
+        if(p.auto){
+          h += '<button class="btn btn-piccolo" type="button" data-cmd="pm-tieni" data-id="' + esc(p.id) + '" aria-pressed="' + !!p.tieni + '">' +
+               (p.tieni ? 'Non tenere più' : 'Tieni negli anni successivi') + '</button>';
+        }
         if(VISTA_PROMEMORIA.elimina === p.id){
           h += '<button class="btn btn-piccolo btn-pericolo" type="button" data-cmd="pm-elimina-si" data-id="' + esc(p.id) + '">Elimina davvero</button>' +
                '<button class="btn btn-piccolo" type="button" data-cmd="pm-elimina-no">Tienilo</button>';
@@ -9646,14 +9791,20 @@ document.addEventListener("click", function(ev){
   var b = ev.target.closest("[data-cmd]");
   if(!b) return;
   var c = b.dataset.cmd, id = b.dataset.id;
-  if(c === "conserva-promemoria") conservaComePromemoria();
-  else if(c === "pm-vai"){
+  if(c === "pm-vai"){
     VISTA_PROMEMORIA.aperto = id; VISTA_PROMEMORIA.cerca = "";
     cambiaVista("promemoria");
   }
   else if(c === "pm-apri"){
     VISTA_PROMEMORIA.aperto = VISTA_PROMEMORIA.aperto === id ? "" : id;
     disegnaPromemoria();
+  }
+  else if(c === "pm-tieni"){
+    var t = stato.promemoria && stato.promemoria[id];
+    if(!t) return;
+    if(t.tieni) delete t.tieni;
+    else t.tieni = Date.now();
+    salvaPromemoria(t);
   }
   else if(c === "pm-modifica"){ VISTA_PROMEMORIA.modifica = id; VISTA_PROMEMORIA.elimina = ""; disegnaPromemoria(); }
   else if(c === "pm-annulla"){ VISTA_PROMEMORIA.modifica = ""; disegnaPromemoria(); }
@@ -10120,19 +10271,23 @@ function comandoGuida(c){
       on.forEach(function(o){ if(o.fine){ if(!M.campi.oraFine) M.campi.oraFine = o.ora; } else if(!M.campi.ora) M.campi.ora = o.ora; });
     }
   }
-  var cm = M.campi, aperto = "";
+  var cm = M.campi, aperto = "", detto = "";
   STATO_IMPORT.guidato = true;
+  if(c === "g-nuova") detto = "Nuova voce dal documento" + (cm.titolo ? ": «" + accorcia(cm.titolo, 60) + "»" : "") + ".";
   if(c === "g-data"){
     var dd = t ? dataDaPassaggio(t) : "";
-    if(dd) cm.data = dd; else aperto = "vm-data";
+    if(dd){ cm.data = dd; detto = "Data: " + dd.split("-").reverse().join("/") + "."; }
+    else aperto = "vm-data";
   }else if(c === "g-ora"){
     var oo = t ? orariDaPassaggio(t) : [];
     if(oo.length){
       cm.ora = ""; cm.oraFine = "";
       oo.forEach(function(o){ if(o.fine){ if(!cm.oraFine) cm.oraFine = o.ora; } else if(!cm.ora) cm.ora = o.ora; else if(!cm.oraFine) cm.oraFine = o.ora; });
+      detto = "Ora: " + cm.ora + (cm.oraFine ? "–" + cm.oraFine : "") + ".";
     }else aperto = "vm-ora";
   }else if(c === "g-titolo"){
-    if(t) cm.titolo = senzaOggetto(t); else aperto = "vm-titolo";
+    if(t){ cm.titolo = senzaOggetto(t); detto = "Titolo: «" + accorcia(cm.titolo, 60) + "»."; }
+    else aperto = "vm-titolo";
   }else if(c === "g-classe"){
     var trovate = t ? classiDaRiga(t, stato.config.classi || []).classi : [];
     if(!trovate.length && t) trovate = classiDaCampo((t.match(/\b\d\s*[°ª^]?\s*[A-Z]{1,4}\b/g) || []).join(","));
@@ -10140,18 +10295,31 @@ function comandoGuida(c){
       var gia = classiDaCampo(cm.classi);
       trovate.forEach(function(x){ if(gia.indexOf(x) < 0) gia.push(x); });
       cm.classi = ordinaClassi(gia, stato.config.classi || []).join(", ");
+      detto = "Classe: " + cm.classi + ".";
     }else aperto = "vm-classi";
   }else if(c === "g-luogo"){
-    if(t) cm.luogo = t.replace(/\s+/g, " ").replace(/^(?:presso|in|nel|nella|nell')\s+/i, "").replace(/[.;,]$/, "").trim();
+    if(t){
+      cm.luogo = t.replace(/\s+/g, " ").replace(/^(?:presso|in|nel|nella|nell')\s+/i, "").replace(/[.;,]$/, "").trim();
+      detto = "Luogo: «" + accorcia(cm.luogo, 60) + "».";
+    }
     else aperto = "vm-luogo";
   }else if(c === "g-dettagli"){
-    if(t) cm.dettagli = (cm.dettagli ? cm.dettagli + "\n" : "") + t.replace(/[ \t]+/g, " ").trim(); else aperto = "vm-dettagli";
+    if(t){ cm.dettagli = (cm.dettagli ? cm.dettagli + "\n" : "") + t.replace(/[ \t]+/g, " ").trim(); detto = "Aggiunto ai dettagli."; }
+    else aperto = "vm-dettagli";
   }else if(c === "g-odg"){
-    if(t) cm.odg = cm.odg.filter(function(p){ return String(p.testo || "").trim(); }).concat(puntiDaTesto(t));
+    if(t){
+      cm.odg = cm.odg.filter(function(p){ return String(p.testo || "").trim(); }).concat(puntiDaTesto(t));
+      detto = "Ordine del giorno: " + cm.odg.length + (cm.odg.length === 1 ? " punto." : " punti.");
+    }
     else { cm.odg.push({testo: "", sotto: []}); }
   }
   disegna();
-  if(aperto) apriSelettore(aperto);
+  if(aperto){ apriSelettore(aperto); return; }
+  /* Il testo resta dov'era, e il modulo della voce sta più in alto: quello
+     che il comando ha scritto si dice, perché si veda anche da qui. */
+  var f = document.getElementById("voce-modifica"), fuori = f && f.getBoundingClientRect().bottom < 0;
+  if(detto) notaFlash(detto + (fuori ? " La voce si completa nel riquadro più in alto, e si scrive con «" +
+                              (M.indice >= 0 ? "Salva la correzione" : "Aggiungi la voce") + "»." : ""));
 }
 
 /* ---------- la selezione nel testo ---------- */
@@ -10258,7 +10426,7 @@ function testoGuidato(){
           '<p class="aiuto">Scegli un passaggio, trascinando oppure toccando una riga e poi un\'altra, e assegnalo con i ' +
           'comandi della colonna: «Nuova voce», «Data», «Ora», «Titolo» e gli altri.</p>' +
           '<p class="aiuto tg-scelta" id="tg-scelta">' + esc(dicituraScelta()) + '</p>' +
-          '<div class="testo-guida" id="testo-guida">';
+          '<div class="testo-guida" id="testo-guida" data-scorre="testo-guida" data-ancora>';
   righeDelTesto().forEach(function(r, n){
     var dentro = s && n >= s.da && n <= s.a;
     h += '<div class="tg-riga' + (r.trim() ? '' : ' tg-vuota') + (dentro ? ' scelta' : '') + '" data-riga="' + n + '">' +
@@ -10280,7 +10448,7 @@ function comandiLettura(L){
          '<button class="btn btn-piccolo" type="button" data-cmd="spunta-nessuna">Togli le spunte</button>' +
          '<button class="btn" type="button" data-cmd="annulla-lettura">Lascia perdere</button>';
   }
-  if(L && !M && (STATO_IMPORT.fase === "conferma" || STATO_IMPORT.fase === "fatto") && STATO_IMPORT.testo) h += comandoPromemoria(L);
+  if(!M && (STATO_IMPORT.fase === "conferma" || STATO_IMPORT.fase === "fatto") && STATO_IMPORT.testo) h += comandoPromemoria();
   if(STATO_IMPORT.fase === "senzaTesto" && !M){
     h += '<button class="btn btn-primary" type="button" data-cmd="g-nuova">Nuova voce</button>' +
          '<button class="btn" type="button" data-cmd="senza-promemoria">Promemoria</button>';
@@ -10302,6 +10470,22 @@ function schedaSenzaTesto(){
 }
 
 /* ---------- gli eventi ---------- */
+/* il riquadro del testo aperto a mano resta aperto ai ridisegni */
+document.addEventListener("toggle", function(ev){
+  if(ev.target && ev.target.classList && ev.target.classList.contains("guida")) STATO_IMPORT.guidato = ev.target.open;
+}, true);
+/* Con il mouse, il secondo e il terzo clic di un doppio o triplo clic sulla
+   stessa riga non devono toglierla appena scelta, né selezionare una parola
+   sola: la riga resta scelta com'era al primo clic. Due tocchi rapidi su
+   righe diverse contano anch'essi come doppio clic, e quelli valgono: il
+   secondo estende la scelta. */
+var ultimaRigaToccata = -1;
+function ripetutoSullaRiga(ev, riga){
+  return ev.detail > 1 && !!riga && Number(riga.dataset.riga) === ultimaRigaToccata;
+}
+document.addEventListener("mousedown", function(ev){
+  if(ripetutoSullaRiga(ev, ev.target.closest && ev.target.closest(".tg-riga"))) ev.preventDefault();
+});
 document.addEventListener("change", function(ev){
   var t = ev.target;
   if(!t || !STATO_IMPORT.modifica) return;
@@ -10311,7 +10495,9 @@ document.addEventListener("change", function(ev){
 
 document.addEventListener("click", function(ev){
   var riga = ev.target.closest(".tg-riga");
+  if(ripetutoSullaRiga(ev, riga)) return;
   if(riga){
+    ultimaRigaToccata = Number(riga.dataset.riga);
     var s = window.getSelection();
     if(s && !s.isCollapsed && s.toString().trim()) return;   /* una selezione trascinata vale com'è */
     toccaRiga(Number(riga.dataset.riga));
@@ -10550,8 +10736,8 @@ function ripristinaBackup(testo){
 
   stato.voci = voci;
   stato.cancellate = dati.cancellate || {};
-  /* i promemoria li cancella soltanto il docente: un backup che non li porta,
-     perché fatto prima che esistessero, lascia quelli che ci sono */
+  /* un backup che non porta i promemoria, perché fatto prima che
+     esistessero, lascia quelli che ci sono */
   if(dati.promemoria && typeof dati.promemoria === "object"){
     var pm = {};
     Object.keys(dati.promemoria).forEach(function(k){
@@ -11261,8 +11447,11 @@ document.addEventListener("click", function(ev){
    - Alla prima apertura dal 1° settembre in poi l'agenda propone di
      scaricare il backup dell'anno terminato, poi ne cancella i dati,
      qui e nell'archivio su GitHub: le voci con data fino al 31
-     agosto, i documenti caricati, nomina, delega, l'elenco dei
-     coordinatori e le classi coordinate scelte a mano. Restano le
+     agosto, i documenti caricati, i testi conservati da sé alla
+     lettura fino al 31 agosto (salvo quelli segnati «Tieni negli
+     anni successivi»), nomina, delega, l'elenco dei coordinatori e
+     le classi coordinate scelte a mano. I promemoria scritti a mano
+     restano. Restano le
      voci dal 1° settembre in poi, anche se lette ad agosto, la
      composizione dei consigli con i rappresentanti e le date delle
      loro elezioni, e le impostazioni generali.
@@ -11293,12 +11482,30 @@ function aggiornaAnnoImpostazioni(){
   return false;
 }
 
+/* il giorno della lettura di un promemoria, come data dell'agenda */
+function giornoISO(ms){
+  var d = new Date(ms);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+/* I testi conservati da sé alla lettura appartengono all'anno del giorno in
+   cui sono stati letti, come i documenti. Quelli segnati «Tieni negli anni
+   successivi» e quelli scritti a mano non appartengono a nessun anno. */
+function annoDelPromemoria(p){
+  if(!p || !p.auto || p.tieni) return "";
+  var ms = p.letto || p.creato;
+  return ms ? annoScolasticoDi(giornoISO(ms)) : "";
+}
+
 /* gli anni terminati che hanno ancora dati e non sono stati puliti */
 function anniDaPulire(){
   var ora = primoAnno(annoDiOggi()), fatte = stato.config.pulizie || {}, anni = {};
   elencoVoci().forEach(function(v){
     if(!v.data) return;
     var a = annoScolasticoDi(v.data);
+    if(a && primoAnno(a) < ora) anni[a] = true;
+  });
+  elencoPromemoria().forEach(function(p){
+    var a = annoDelPromemoria(p);
     if(a && primoAnno(a) < ora) anni[a] = true;
   });
   var c = stato.config.consigli || {};
@@ -11338,6 +11545,13 @@ function eseguiPulizia(anni){
   });
   /* le classi coordinate scelte a mano erano dell'anno finito */
   stato.config.coordina = [];
+  /* i testi letti fino al 31 agosto, salvo quelli da tenere */
+  elencoPromemoria().forEach(function(p){
+    var a = annoDelPromemoria(p);
+    if(!a || fineAnnoScolastico(a) > fine) return;
+    delete stato.promemoria[p.id];
+    stato.cancellate[p.id] = momento;
+  });
   /* i documenti caricati fino al 31 agosto */
   var inizio = dataDa(fine).getTime() + 86400000;
   elencoDocumenti().then(function(tutti){
@@ -11366,7 +11580,8 @@ function avvisoCambioAnno(){
   el.hidden = false;
   el.innerHTML = '<section class="gruppo avviso-anno"><div class="corpo-pannello">' +
     '<p><b>È cominciato l\'anno scolastico ' + esc(annoDiOggi()) + '.</b> I dati dell\'a.s. ' + esc(anni.join(", ")) +
-    ' (voci fino al 31 agosto, documenti caricati, nomina, delega, coordinatori) vanno tolti da qui e dall\'archivio su GitHub. ' +
+    ' (voci fino al 31 agosto, documenti caricati, testi dei documenti letti non segnati «Tieni negli anni successivi», ' +
+    'nomina, delega, coordinatori) vanno tolti da qui e dall\'archivio su GitHub. ' +
     'Prima scarica il backup: è l\'unica copia che resta. Composizione dei consigli, rappresentanti e impostazioni restano.</p>' +
     /* i resoconti delle attività vanno nella programmazione svolta di ogni
        classe: dopo la pulizia quelle attività non ci sono più */
@@ -11545,13 +11760,10 @@ document.addEventListener("click", function(ev){
       }
     }
     else if(c==="salva-documenti-conf"){
-      var g=Number((document.getElementById("in-giorni-doc")||{}).value);
-      if(isFinite(g) && g>0) stato.config.giorniDocumenti=Math.round(g);
       stato.config.prossimoVerbaleCdI=String((document.getElementById("in-verb-cdi")||{}).value||"").trim();
       stato.config.meet=String((document.getElementById("in-meet")||{}).value||"").trim();
       salvaConfig();
       notaFlash("Salvato.");
-      puliziaDocumenti();
     }
     else if(c==="applica-prot") applicaProtocollo();
     else if(c==="pulizia-backup" || c==="pulizia-senza-backup"){
