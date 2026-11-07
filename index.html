@@ -37,6 +37,8 @@
   --prugna-soft:#f5e4ee;
   --acqua:#1f7684;
   --acqua-soft:#daedf0;
+  --viola:#6a4fb3;
+  --viola-soft:#ece6f8;
   --shadow:0 1px 2px rgba(60,36,16,.06), 0 8px 24px -18px rgba(60,36,16,.4);
   --radius:9px;
   color-scheme:light;
@@ -67,6 +69,8 @@
     --prugna-soft:#33212b;
     --acqua:#6cbccb;
     --acqua-soft:#172c31;
+    --viola:#b9a5ec;
+    --viola-soft:#262039;
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -20px rgba(0,0,0,.9);
     color-scheme:dark;
   }
@@ -96,6 +100,8 @@
   --prugna-soft:#33212b;
   --acqua:#6cbccb;
   --acqua-soft:#172c31;
+  --viola:#b9a5ec;
+  --viola-soft:#262039;
   --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -20px rgba(0,0,0,.9);
   color-scheme:dark;
 }
@@ -264,6 +270,7 @@ main{max-width:1180px;margin:0 auto;padding:22px 22px 90px}
 .riga.t-calendario{border-left-color:var(--pietra);background:linear-gradient(90deg,var(--pietra-soft) 0 3px,transparent 3px)}
 .riga.t-civica{border-left-color:var(--prugna)}
 .riga.t-approfondimento{border-left-color:var(--acqua)}
+.riga.t-personale{border-left-color:var(--viola)}
 .riga.chiusa{opacity:.55}
 .riga.chiusa .titolo{text-decoration:line-through;text-decoration-color:var(--faint)}
 
@@ -307,6 +314,9 @@ main{max-width:1180px;margin:0 auto;padding:22px 22px 90px}
   overflow-wrap:anywhere;
 }
 .alunni b{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);font-weight:500;margin-right:6px}
+.luogo{margin-top:5px;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.luogo b{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);font-weight:500;margin-right:6px}
+.luogo .link-mappa{color:var(--viola);white-space:nowrap;margin-left:4px}
 .azioni{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
 /* La riga si regola sullo spazio che ha davvero, non su quanto dichiara di
    essere larga la finestra: quando il riquadro è stretto i pulsanti scendono
@@ -340,6 +350,7 @@ main{max-width:1180px;margin:0 auto;padding:22px 22px 90px}
 .tag-tipo.t-calendario{background:var(--pietra-soft);color:var(--pietra)}
 .tag-tipo.t-civica{background:var(--prugna-soft);color:var(--prugna)}
 .tag-tipo.t-approfondimento{background:var(--acqua-soft);color:var(--acqua)}
+.tag-tipo.t-personale{background:var(--viola-soft);color:var(--viola)}
 .tag-ore-civica{border:1px solid var(--prugna);color:var(--prugna);font-weight:600}
 .tag-stato{border:1px solid var(--line);color:var(--muted)}
 .tag-stato.aperto{border-color:var(--accent);color:var(--accent)}
@@ -1095,6 +1106,7 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
           <option value="argomento">Argomento da trattare</option>
           <option value="impegno">Riunione, scadenza, appuntamento</option>
           <option value="calendario">Data del calendario scolastico</option>
+          <option value="personale">Personale: visita, commissione, cosa privata</option>
         </select>
       </div>
       <div class="campo largo" id="riga-preset" hidden>
@@ -1105,7 +1117,7 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
         <label for="f-titolo">Titolo</label>
         <input id="f-titolo" name="titolo" type="text" required placeholder="Es. Cinetica chimica: legge di velocità">
       </div>
-      <div class="campo">
+      <div class="campo solo-scuola" id="riga-classe">
         <label for="f-classe">Classe</label>
         <input id="f-classe" name="classe" list="lista-classi" placeholder="Es. 3A, oppure 3A, 4A se la voce vale per più classi">
         <datalist id="lista-classi"></datalist>
@@ -1119,7 +1131,7 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
         <label for="f-data">Data <span id="lab-data-opz"></span></label>
         <input id="f-data" name="data" type="date">
       </div>
-      <div class="campo">
+      <div class="campo solo-scuola" id="riga-ora">
         <label for="f-ora">Ora di lezione</label>
         <select id="f-ora" name="ora">
           <option value="">—</option>
@@ -1128,12 +1140,24 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
           <option>pomeriggio</option>
         </select>
       </div>
+      <div class="campo solo-personale" id="riga-inizio" hidden>
+        <label for="f-inizio">Ora di inizio <span>(facoltativa)</span></label>
+        <input id="f-inizio" name="inizio" type="time">
+      </div>
+      <div class="campo solo-personale" id="riga-fine" hidden>
+        <label for="f-fine">Ora di fine <span>(facoltativa)</span></label>
+        <input id="f-fine" name="fine" type="time">
+      </div>
+      <div class="campo largo solo-personale" id="riga-luogo" hidden>
+        <label for="f-luogo">Luogo e indirizzo</label>
+        <input id="f-luogo" name="luogo" type="text" placeholder="Es. Studio medico, via Roma 1 - Palermo">
+      </div>
       <div class="campo largo" id="riga-suggerimento" hidden><p class="suggerimento" id="testo-suggerimento"></p></div>
       <div class="campo">
         <label for="f-stato">Stato</label>
         <select id="f-stato" name="stato"></select>
       </div>
-      <div class="campo">
+      <div class="campo solo-scuola" id="riga-quad">
         <label for="f-quad">Periodo</label>
         <select id="f-quad" name="periodo">
           <option value="">—</option>
@@ -1141,11 +1165,11 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
           <option value="2º quadrimestre">2º quadrimestre</option>
         </select>
       </div>
-      <div class="campo">
+      <div class="campo solo-scuola" id="riga-fonte">
         <label for="f-fonte">Circolare di riferimento</label>
         <input id="f-fonte" name="fonte" type="text" placeholder="Es. Circ. n. 12">
       </div>
-      <div class="campo">
+      <div class="campo solo-scuola" id="riga-link">
         <label for="f-link">Link alla circolare</label>
         <input id="f-link" name="link" type="url" placeholder="https://…">
       </div>
@@ -1154,7 +1178,7 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
         <input id="f-alunni" name="alunni" type="text" placeholder="Cognomi separati da virgola">
       </div>
       <div class="campo largo">
-        <label for="f-dettagli">Argomenti e note</label>
+        <label for="f-dettagli" id="lab-dettagli">Argomenti e note</label>
         <textarea id="f-dettagli" name="dettagli" placeholder="Programma d'esame, tipologia della prova, materiali da portare…"></textarea>
       </div>
       <details class="campo largo dati-verbale" id="riga-verbale" hidden>
@@ -1716,8 +1740,14 @@ var TIPI = {
   impegno:{label:"Impegno", breve:"Impegno", stati:["da fare","fatto","annullato"], chiusi:["fatto","annullato"], dataObbl:false},
   calendario:{label:"Calendario scolastico", breve:"Calendario", stati:["previsto","annullato"], chiusi:["annullato"], dataObbl:true},
   civica:{label:"Educazione civica", breve:"Ed. civica", stati:["da fare","svolta","annullata"], chiusi:["svolta","annullata"], dataObbl:false},
-  approfondimento:{label:"Chimico-ambientale", breve:"Chimico-ambientale", stati:["da programmare","programmato","svolto","annullato"], chiusi:["svolto","annullato"], dataObbl:false}
+  approfondimento:{label:"Chimico-ambientale", breve:"Chimico-ambientale", stati:["da programmare","programmato","svolto","annullato"], chiusi:["svolto","annullato"], dataObbl:false},
+  /* le cose private, fuori dalla scuola: una visita, una commissione, una
+     scadenza di casa. Hanno ora di inizio e di fine vere e un luogo, e
+     restano fuori da tutto ciò che è scolastico (personale.js) */
+  personale:{label:"Personale", breve:"Personale", stati:["da fare","fatto","annullato"], chiusi:["fatto","annullato"], dataObbl:false}
 };
+var TIPO_PERSONALE = "personale";
+function personale(v){ return !!v && v.tipo===TIPO_PERSONALE; }
 /* categorie con un monte ore da tenere sotto controllo */
 var MONTEORE=[
   {chiave:"civica", tipo:"civica", titolo:"Educazione civica", sezione:"Educazione civica", classeBarra:"civ-svolte",
@@ -1954,7 +1984,8 @@ function svolta(v){
 function classificaAttivita(){
   var g={progSvolte:[], nonProgSvolte:[], progNonSvolte:[], daProgrammare:[], annullate:[]};
   elencoVoci().forEach(function(v){
-    if(v.tipo==="calendario") return;
+    /* la relazione è delle attività scolastiche: le voci personali no */
+    if(v.tipo==="calendario" || personale(v)) return;
     var st=(v.stato||"").toLowerCase();
     if(st==="annullata"||st==="annullato"){ g.annullate.push(v); return; }
     if(svolta(v)){ (eraProgrammata(v) ? g.progSvolte : g.nonProgSvolte).push(v); return; }
@@ -2020,7 +2051,9 @@ function chiusa(v){
 function ordinaPerData(a,b){
   var da=a.data||"9999-99-99", db2=b.data||"9999-99-99";
   if(da!==db2) return da<db2?-1:1;
-  return (a.ora||"~") < (b.ora||"~") ? -1 : 1;
+  /* le voci personali hanno l'ora d'inizio vera, «18:00», al posto dell'ora
+     di lezione */
+  return (a.ora||a.inizio||"~") < (b.ora||b.inizio||"~") ? -1 : 1;
 }
 
 /* ===== archivio.js ================================================ */
@@ -2244,7 +2277,7 @@ function dopoLePulizie(esito, a, b){
   }
   Object.keys(esito.voci).forEach(function(k){
     var v = esito.voci[k];
-    if(!v.data) return;
+    if(!v.data || personale(v)) return;
     var quando = 0;
     anni.forEach(function(x){ if(v.data <= fineAnnoScolastico(x) && pul[x] > quando) quando = pul[x]; });
     if(quando && (v.aggiornato || 0) <= quando){
@@ -2820,6 +2853,7 @@ function riga(v, opz){
   h+='<span class="tag tag-tipo t-'+esc(v.tipo)+'">'+esc(t.breve)+'</span>';
   if(v.ora) h+='<span class="tag tag-ora">'+esc(v.ora)+'</span>';
   else if(v.inizio && v.fine) h+='<span class="tag tag-ora">'+esc(v.inizio+"–"+v.fine)+'</span>';
+  else if(v.inizio) h+='<span class="tag tag-ora">'+esc("ore "+v.inizio)+'</span>';
   if(v.materia) h+='<span class="tag tag-mat">'+esc(v.materia)+'</span>';
   if((v.tipo==="civica"||v.tipo==="approfondimento") && v.durata) h+='<span class="tag tag-ore-civica">'+esc(oreTesto(v.durata))+'</span>';
   if(v.fonte){
@@ -2831,10 +2865,12 @@ function riga(v, opz){
   h+=tagCoordinatori(v);
   h+='</div>';
   if(v.alunni) h+='<div class="alunni"><b>Convocati</b>'+esc(v.alunni)+'</div>';
+  if(personale(v) && v.luogo) h+=luogoPersonale(v);
   if(v.dettagli) h+= opz.contraiOdg ? dettagliConOdg(v) : '<div class="dettagli">'+esc(v.dettagli)+'</div>';
   h+='</div><div class="azioni">';
   if(verbaleAmmesso(v)) h+='<button class="btn btn-sm btn-verbale" data-azione="verbale" type="button" title="Scarica il verbale già intestato con data, ora e ordine del giorno">Verbale precompilato</button>';
   if(!chiusa(v) && v.tipo!=="calendario") h+='<button class="btn btn-sm" data-azione="avanza" type="button">'+esc(prossimoStatoLabel(v))+'</button>';
+  if(personale(v) && v.data && !chiusa(v)) h+='<button class="btn btn-sm" data-azione="calendario-ics" type="button" title="Scarica il file da aprire con il calendario del telefono o del computer, che avvisa un\'ora prima">Al calendario</button>';
   h+='<button class="btn btn-sm btn-ghost" data-azione="modifica" type="button">Modifica</button>';
   h+='</div></div>';
   return h;
@@ -2853,7 +2889,7 @@ function prossimoStatoLabel(v){
   var i=t.stati.indexOf(v.stato);
   var succ=t.stati[i+1]||t.stati[t.stati.length-1];
   if(v.tipo==="argomento") return succ==="in corso"?"Inizia":"Segna svolto";
-  if(v.tipo==="impegno") return "Fatto";
+  if(v.tipo==="impegno" || personale(v)) return "Fatto";
   if(v.tipo==="compito") return succ==="svolto"?"Svolto":(succ==="da correggere"?"Da correggere":"Corretto");
   return "Svolta";
 }
@@ -2861,7 +2897,7 @@ function avanzaStato(v){
   var t=TIPI[v.tipo]||TIPI.impegno;
   var i=t.stati.indexOf(v.stato);
   var succ=t.stati[i+1];
-  if(v.tipo==="impegno") succ="fatto";
+  if(v.tipo==="impegno" || personale(v)) succ="fatto";
   if(!succ) succ=t.chiusi[0];
   v.stato=succ;
   v.aggiornato=Date.now();
@@ -2885,10 +2921,12 @@ function disegnaProssimi(){
   var aperte=tutte.filter(function(v){return !chiusa(v);});
   var daCircolari=aperte.filter(daCircolare);
   var dateCal=aperte.filter(function(v){return v.tipo==="calendario";});
-  var proprie=aperte.filter(function(v){return !daCircolare(v) && v.tipo!=="calendario";});
+  var proprie=aperte.filter(function(v){return !daCircolare(v) && v.tipo!=="calendario" && !personale(v);});
+  var private_=aperte.filter(personale);
   var filtro=stato.filtroHome||"tutto";
   var mostrate = filtro==="circolari" ? daCircolari
                : filtro==="calendario" ? dateCal
+               : filtro==="personali" ? private_
                : filtro==="mie" ? proprie : aperte;
   var daRivedere={};
   incoerenzeOrario().forEach(function(x){ daRivedere[x.voce.id]=1; });
@@ -2917,6 +2955,7 @@ function disegnaProssimi(){
      '<button type="button" data-filtro="circolari" aria-pressed="'+(filtro==="circolari")+'">Dalle circolari <span class="n">'+daCircolari.length+'</span></button>'+
      '<button type="button" data-filtro="calendario" aria-pressed="'+(filtro==="calendario")+'">Calendario <span class="n">'+dateCal.length+'</span></button>'+
      '<button type="button" data-filtro="mie" aria-pressed="'+(filtro==="mie")+'">Aggiunte da me <span class="n">'+proprie.length+'</span></button>'+
+     '<button type="button" data-filtro="personali" aria-pressed="'+(filtro==="personali")+'">Personali <span class="n">'+private_.length+'</span></button>'+
      '</div>';
   h+='<div class="griglia-home"><div>';
   h+=sezioneRivedere();
@@ -2938,6 +2977,11 @@ function disegnaProssimi(){
     }else if(filtro==="calendario"){
       h+='<div class="vuoto"><h2>Nessuna data di calendario in arrivo</h2>'+
          '<p>Sospensioni, festività e scadenze d\'istituto compaiono qui e spariscono da sole quando la data è passata.</p>'+
+         '<button class="btn" data-filtro="tutto" type="button">Mostra tutto</button></div>';
+    }else if(filtro==="personali"){
+      h+='<div class="vuoto"><h2>Nessuna voce personale aperta</h2>'+
+         '<p>Visite, commissioni e le altre cose private, con la loro ora e il luogo, compaiono qui e insieme alle altre voci nei Prossimi giorni.</p>'+
+         '<button class="btn btn-primary" data-cmd="nuova-personale" type="button">+ Nuova voce personale</button>'+
          '<button class="btn" data-filtro="tutto" type="button">Mostra tutto</button></div>';
     }else if(filtro==="mie"){
       h+='<div class="vuoto"><h2>Nessuna voce aggiunta da te ancora aperta</h2>'+
@@ -3567,6 +3611,18 @@ function statiPerTipo(tipo, scelto){
   document.getElementById("riga-preset").hidden = tipo!=="impegno";
   document.getElementById("lab-data-opz").textContent = t.dataObbl ? "" : "(facoltativa)";
   document.getElementById("f-data").required = !!t.dataObbl;
+  /* una voce personale non ha classe, materia, ora di lezione, periodo né
+     circolare: ha un'ora vera, di inizio e di fine, e un luogo */
+  var pers = tipo===TIPO_PERSONALE;
+  [].forEach.call(document.querySelectorAll("#form-voce .solo-scuola"), function(e){ e.hidden = pers; });
+  [].forEach.call(document.querySelectorAll("#form-voce .solo-personale"), function(e){ e.hidden = !pers; });
+  if(pers){
+    document.getElementById("riga-materia").hidden = true;
+    document.getElementById("riga-alunni").hidden = true;
+  }
+  document.getElementById("lab-dettagli").textContent = pers ? "Note" : "Argomenti e note";
+  document.getElementById("f-titolo").placeholder = pers ? "Es. Visita specialistica" : "Es. Cinetica chimica: legge di velocità";
+  document.getElementById("f-dettagli").placeholder = pers ? "Che cosa portare, prenotazione, recapiti…" : "Programma d'esame, tipologia della prova, materiali da portare…";
 }
 function apriNuova(tipo, classe){
   /* le attività di educazione civica e chimico-ambientali hanno la loro finestra */
@@ -3596,6 +3652,9 @@ function apriVoce(v){
   document.getElementById("f-link").value = v?(v.link||""):"";
   document.getElementById("f-alunni").value = v?(v.alunni||""):"";
   document.getElementById("f-dettagli").value = v?(v.dettagli||""):"";
+  document.getElementById("f-inizio").value = v&&personale(v)?(v.inizio||""):"";
+  document.getElementById("f-fine").value = v&&personale(v)?(v.fine||""):"";
+  document.getElementById("f-luogo").value = v&&personale(v)?(v.luogo||""):"";
   riempiDatiVerbale(v);
   aggiornaSuggerimento();
   dlg.showModal();
@@ -3603,6 +3662,7 @@ function apriVoce(v){
 }
 function aggiornaSuggerimento(){
   var box=document.getElementById("riga-suggerimento"), txt=document.getElementById("testo-suggerimento");
+  if(document.getElementById("f-tipo").value===TIPO_PERSONALE){ box.hidden=true; return; }
   var cl=document.getElementById("f-classe").value.trim();
   var dt=document.getElementById("f-data").value;
   /* con più classi nello stesso campo il suggerimento sull'ora non ha senso */
@@ -3621,7 +3681,7 @@ function aggiornaSuggerimento(){
   document.getElementById(id).addEventListener("change", aggiornaSuggerimento);
   document.getElementById(id).addEventListener("input", aggiornaSuggerimento);
 });
-document.getElementById("f-tipo").addEventListener("change", function(){ statiPerTipo(this.value, null); mostraDatiVerbale(); });
+document.getElementById("f-tipo").addEventListener("change", function(){ statiPerTipo(this.value, null); mostraDatiVerbale(); aggiornaSuggerimento(); });
 document.getElementById("f-titolo").addEventListener("input", mostraDatiVerbale);
 ["input", "change"].forEach(function(t){
   document.getElementById("riga-verbale").addEventListener(t, function(){ this.dataset.toccato = "1"; });
@@ -3751,6 +3811,19 @@ document.getElementById("form-voce").addEventListener("submit", function(ev){
   v.link=document.getElementById("f-link").value.trim();
   v.alunni=v.tipo==="interrogazione"?document.getElementById("f-alunni").value.trim():"";
   v.dettagli=document.getElementById("f-dettagli").value.trim();
+  if(personale(v)){
+    /* niente di scolastico su una voce personale: l'ora sta in inizio e fine */
+    v.classe=""; v.materia=""; v.ora=""; v.periodo=""; v.fonte=""; v.link="";
+    delete v.oraConfermata;
+    v.inizio=document.getElementById("f-inizio").value;
+    v.fine=document.getElementById("f-fine").value;
+    /* una fine prima dell'inizio è una svista: si scambiano */
+    if(v.inizio && v.fine && v.fine<v.inizio){ var x=v.inizio; v.inizio=v.fine; v.fine=x; }
+    if(!v.inizio) v.fine="";
+    v.luogo=document.getElementById("f-luogo").value.trim();
+  }else{
+    delete v.inizio; delete v.fine; delete v.luogo;
+  }
   var cv=leggiDatiVerbale(v);
   if(cv) v.convocazione=cv;
   v.aggiornato=Date.now();
@@ -8825,7 +8898,7 @@ function pianoVoce(v, rif){
   var id = idVoceDaLettura(v), mie = classiInChiave(v.classe), out = {azione: "nuova", voci: []};
   Object.keys(stato.voci).forEach(function(k){
     var e = stato.voci[k];
-    if(!e || TIPI_IN_CLASSE.indexOf(e.tipo) >= 0) return;
+    if(!e || TIPI_IN_CLASSE.indexOf(e.tipo) >= 0 || personale(e)) return;
     var sue = classiInChiave(e.classe), nata = nataDa(e, rif);
     var comuni = sue.filter(function(c){ return mie.indexOf(c) >= 0; });
     if(k !== id){
@@ -10704,7 +10777,8 @@ function esportaJson(){
   scarica("agenda-docente-"+oggiISO()+".json", JSON.stringify({voci:stato.voci, promemoria:stato.promemoria||{}, config:stato.config, esportato:new Date().toISOString()}, null, 2));
 }
 function esportaCsv(){
-  var col=["data","ora","classe","materia","tipo","titolo","stato","periodo","fonte","link","alunni","dettagli"];
+  /* inizio, fine e luogo li hanno le voci personali e le attività delle sezioni */
+  var col=["data","ora","classe","materia","tipo","titolo","stato","periodo","fonte","link","alunni","dettagli","inizio","fine","luogo"];
   var righe=[col.join(";")];
   elencoVoci().sort(ordinaPerData).forEach(function(v){
     righe.push(col.map(function(c){
@@ -10771,6 +10845,132 @@ function importa(testo){
         : "Il testo incollato non è un backup valido: serve il contenuto integrale del file JSON.";
     }
   }
+}
+
+/* ===== personale.js =============================================== */
+/* ============ le voci personali ============
+   Le cose private, fuori dalla scuola: una visita, una commissione, una
+   scadenza di casa. Si scrivono dalla finestra della voce con il tipo
+   «Personale», con l'ora di inizio e di fine vere e il luogo, e compaiono
+   nei Prossimi giorni insieme a tutto il resto.
+
+   Restano fuori da ciò che è scolastico: relazione delle attività, monte
+   ore, resoconti, controlli sull'orario, sostituzione delle sedute lette
+   dai documenti, pulizia del 1° settembre.
+
+   Due aiuti, sulla riga della voce:
+   - il luogo porta a un collegamento che lo cerca sulla mappa; il
+     collegamento si apre soltanto se lo si tocca, e la pagina da sola non
+     chiede niente a nessuno;
+   - «Al calendario» scarica un file .ics, costruito qui dentro, che il
+     calendario del telefono o del computer importa: è il calendario, non
+     l'agenda, che avvisa prima dell'appuntamento, anche ad agenda chiusa. */
+
+var MAPPA_CERCA = "https://www.google.com/maps/search/?api=1&query=";
+/* l'avviso del calendario: un'ora prima di un appuntamento con l'ora, e alle
+   9 del giorno prima per uno senza ora (che il calendario segna per l'intera
+   giornata, a partire dalla mezzanotte) */
+var ICS_AVVISO_ORA = "-PT1H";
+var ICS_AVVISO_GIORNO = "-PT15H";
+var ICS_FUSO = "Europe/Rome";
+
+function linkMappa(luogo){
+  return MAPPA_CERCA + encodeURIComponent(String(luogo || "").trim());
+}
+function luogoPersonale(v){
+  return '<div class="luogo"><b>Luogo</b>' + esc(v.luogo) +
+         ' <a class="link-mappa" href="' + esc(linkMappa(v.luogo)) + '" target="_blank" rel="noopener"' +
+         ' title="Cerca l\'indirizzo sulla mappa, in una scheda nuova">mappa ↗</a></div>';
+}
+
+/* ---------- il file .ics (RFC 5545) ---------- */
+/* virgola, punto e virgola, barra rovescia e a capo vanno protetti */
+function icsTesto(s){
+  return String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/;/g, "\\;")
+    .replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+}
+/* le righe non superano i 75 byte: oltre, si spezzano e la continuazione
+   comincia con uno spazio. Si contano i byte, non le lettere, perché le
+   lettere accentate ne occupano due. */
+function icsPiega(riga){
+  var enc = new TextEncoder(), fuori = [], pezzo = "", byte = 0, limite = 75;
+  Array.from(riga).forEach(function(c){
+    var n = enc.encode(c).length;
+    if(byte + n > limite){
+      fuori.push(pezzo);
+      pezzo = " "; byte = 1; limite = 75;
+    }
+    pezzo += c; byte += n;
+  });
+  fuori.push(pezzo);
+  return fuori.join("\r\n");
+}
+function icsGiorno(iso){ return String(iso || "").replace(/-/g, ""); }
+function icsOra(hhmm){ return String(hhmm || "").replace(":", "") + "00"; }
+function icsGiornoDopo(iso){
+  var d = dataDa(iso);
+  d.setDate(d.getDate() + 1);
+  return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+}
+/* un'ora dopo l'inizio, quando la fine non c'è */
+function icsUnOraDopo(iso, hhmm){
+  var p = hhmm.split(":"), m = Number(p[0]) * 60 + Number(p[1]) + 60;
+  if(m >= 24 * 60) return {giorno: icsGiornoDopo(iso), ora: icsOra(String(Math.floor((m - 1440) / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"))};
+  return {giorno: icsGiorno(iso), ora: icsOra(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"))};
+}
+function icsAdesso(){
+  var d = new Date();
+  return d.getUTCFullYear() + String(d.getUTCMonth() + 1).padStart(2, "0") + String(d.getUTCDate()).padStart(2, "0") + "T" +
+         String(d.getUTCHours()).padStart(2, "0") + String(d.getUTCMinutes()).padStart(2, "0") + String(d.getUTCSeconds()).padStart(2, "0") + "Z";
+}
+function icsDiVoce(v){
+  if(!v || !v.data) return "";
+  var r = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Agenda//Voce personale//IT",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH"
+  ];
+  if(v.inizio){
+    /* l'ora civile italiana, con il passaggio all'ora legale e ritorno */
+    r.push("BEGIN:VTIMEZONE", "TZID:" + ICS_FUSO,
+      "BEGIN:DAYLIGHT", "TZOFFSETFROM:+0100", "TZOFFSETTO:+0200", "TZNAME:CEST",
+      "DTSTART:19700329T020000", "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU", "END:DAYLIGHT",
+      "BEGIN:STANDARD", "TZOFFSETFROM:+0200", "TZOFFSETTO:+0100", "TZNAME:CET",
+      "DTSTART:19701025T030000", "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU", "END:STANDARD",
+      "END:VTIMEZONE");
+  }
+  r.push("BEGIN:VEVENT",
+         "UID:" + v.id + "@agenda",
+         "DTSTAMP:" + icsAdesso(),
+         "SUMMARY:" + icsTesto(v.titolo || "Appuntamento"));
+  if(v.inizio){
+    r.push("DTSTART;TZID=" + ICS_FUSO + ":" + icsGiorno(v.data) + "T" + icsOra(v.inizio));
+    var fine = v.fine ? {giorno: icsGiorno(v.data), ora: icsOra(v.fine)} : icsUnOraDopo(v.data, v.inizio);
+    r.push("DTEND;TZID=" + ICS_FUSO + ":" + fine.giorno + "T" + fine.ora);
+  }else{
+    r.push("DTSTART;VALUE=DATE:" + icsGiorno(v.data), "DTEND;VALUE=DATE:" + icsGiornoDopo(v.data));
+  }
+  if(v.luogo) r.push("LOCATION:" + icsTesto(v.luogo));
+  if(v.dettagli) r.push("DESCRIPTION:" + icsTesto(v.dettagli));
+  r.push("BEGIN:VALARM", "ACTION:DISPLAY",
+         "DESCRIPTION:" + icsTesto(v.titolo || "Appuntamento"),
+         "TRIGGER:" + (v.inizio ? ICS_AVVISO_ORA : ICS_AVVISO_GIORNO),
+         "END:VALARM", "END:VEVENT", "END:VCALENDAR");
+  return r.map(icsPiega).join("\r\n") + "\r\n";
+}
+function nomeIcs(v){
+  var t = String(v.titolo || "appuntamento").replace(/[\\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+  return (t || "appuntamento") + " " + v.data + ".ics";
+}
+function scaricaIcs(v){
+  var testo = icsDiVoce(v);
+  if(!testo){ notaFlash("Per il calendario serve la data."); return false; }
+  var ok = scaricaFile(nomeIcs(v), testo, "text/calendar;charset=utf-8");
+  notaFlash(ok ? "File per il calendario scaricato: aprilo per aggiungere l'appuntamento, con l'avviso."
+               : "Il file per il calendario non si è potuto scaricare.");
+  return ok;
 }
 
 /* ===== cartella.js ================================================ */
@@ -11532,7 +11732,8 @@ function eseguiPulizia(anni){
   var momento = Date.now(), fine = anni.map(fineAnnoScolastico).sort().pop(), tolte = 0;
   if(!stato.cancellate) stato.cancellate = {};
   elencoVoci().forEach(function(v){
-    if(!v.data || v.data > fine) return;
+    /* le voci personali non appartengono all'anno scolastico: restano */
+    if(!v.data || v.data > fine || personale(v)) return;
     delete stato.voci[v.id];
     stato.cancellate[v.id] = momento;
     tolte++;
@@ -11580,9 +11781,9 @@ function avvisoCambioAnno(){
   el.hidden = false;
   el.innerHTML = '<section class="gruppo avviso-anno"><div class="corpo-pannello">' +
     '<p><b>È cominciato l\'anno scolastico ' + esc(annoDiOggi()) + '.</b> I dati dell\'a.s. ' + esc(anni.join(", ")) +
-    ' (voci fino al 31 agosto, documenti caricati, testi dei documenti letti non segnati «Tieni negli anni successivi», ' +
+    ' (voci scolastiche fino al 31 agosto, documenti caricati, testi dei documenti letti non segnati «Tieni negli anni successivi», ' +
     'nomina, delega, coordinatori) vanno tolti da qui e dall\'archivio su GitHub. ' +
-    'Prima scarica il backup: è l\'unica copia che resta. Composizione dei consigli, rappresentanti e impostazioni restano.</p>' +
+    'Prima scarica il backup: è l\'unica copia che resta. Composizione dei consigli, rappresentanti, voci personali e impostazioni restano.</p>' +
     /* i resoconti delle attività vanno nella programmazione svolta di ogni
        classe: dopo la pulizia quelle attività non ci sono più */
     '<p><b>Prima della pulizia stampa anche i due resoconti</b> di Educazione civica e della sezione chimico-ambientale, ' +
@@ -11645,6 +11846,7 @@ document.addEventListener("click", function(ev){
       if(registroDiVista(stato.vista)) apriAttivita(registroDiVista(stato.vista), null);
       else apriVoce(null);
     }
+    else if(c==="nuova-personale") apriNuova(TIPO_PERSONALE);
     else if(c==="esempi") caricaEsempi();
     else if(c==="impostazioni") cambiaVista("orario");
     else if(c==="leggi-doc"){
@@ -12028,6 +12230,7 @@ document.addEventListener("click", function(ev){
     if(!v) return;
     var azione=az.dataset.azione;
     if(azione==="verbale"){ if(verbaleAmmesso(v)) generaVerbale(v); return; }
+    if(azione==="calendario-ics"){ if(personale(v)) scaricaIcs(v); return; }
     if(azione==="avanza") avanzaStato(Object.assign({}, v));
     else if(azione==="riallinea"){
       var nv=Object.assign({}, v);
@@ -12278,6 +12481,8 @@ window.agenda = {
   coordinaDi: coordinaDi,
   anniDaPulire: anniDaPulire,
   eseguiPulizia: eseguiPulizia,
+  classificaAttivita: classificaAttivita,
+  icsDiVoce: icsDiVoce,
   leggiNomina: leggiNomina,
   coordinatoreDi: coordinatoreDi,
   apriVoce: apriVoce,
