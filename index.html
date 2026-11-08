@@ -4826,6 +4826,20 @@ var GIORNI_NOME = ["domenica","lunedì","martedì","mercoledì","giovedì","vene
 
 var RE_MESE = "gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre";
 var RE_GSETT = "luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica";
+/* le forme brevi, «nov.», «sett.», «lun.»: si accettano soltanto accanto a
+   un giorno in cifre, dove non possono essere altro. Il mese breve vale con
+   il suo punto, «9 nov.», o seguito dall'anno, «9 nov 2026»: senza l'uno e
+   senza l'altro, come le intestazioni «Lun 14 SETT» di una tabella oraria,
+   resta una colonna e non una data. Il nome intero viene prima, perché
+   l'alternativa più lunga deve vincere. */
+var RE_MESE_BREVE = "(?:genn?|febb?|mar|apr|magg?|giu|lug|ago|sett?|ott|nov|dic)(?:\\.|(?=\\s+\\d{4}\\b))";
+var RE_MESE_TUTTI = "(?:" + RE_MESE + ")(?![A-Za-zÀ-ÿ])|" + RE_MESE_BREVE;
+var RE_GSETT_BREVE = "(?:lun|mar|mer|gio|ven|sab|dom)\\.?(?![A-Za-zÀ-ÿ])";
+function numeroMese(s){
+  var t = senzaAccenti(s).replace(/[^a-z]/g, "");
+  for(var k = 0; k < MESI_NOME.length; k++) if(MESI_NOME[k].indexOf(t) === 0 && t.length >= 3) return k + 1;
+  return 0;
+}
 
 /* l'anno in lettere serve all'intestazione del verbale */
 var ANNI_LETTERE = {
@@ -4995,10 +5009,26 @@ function trovaDate(riga, anni, contesto){
       aggiungi(isoData(an3, Number(m[2]), Number(m[1])), m.index, m.index + m[0].length, m[0]);
   }
 
-  /* 3. intervallo per esteso: dal 25 al 31 agosto 2027 */
-  re = new RegExp("\\bdal\\s+(\\d{1,2})\\s+al\\s+(\\d{1,2})\\s+(" + RE_MESE + ")(?:\\s+(\\d{4}))?", "gi");
+  /* 2 bis. data con i punti e l'anno intero: 09.11.2026 (con l'anno a due
+        cifre si confonderebbe con un orario con i secondi) */
+  re = /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g;
   while((m = re.exec(t))){
-    var mm3 = MESI_NOME.indexOf(m[3].toLowerCase()) + 1;
+    if(dataValida(Number(m[3]), Number(m[2]), Number(m[1])))
+      aggiungi(isoData(Number(m[3]), Number(m[2]), Number(m[1])), m.index, m.index + m[0].length, m[0]);
+  }
+
+  /* 2 ter. il giorno della settimana con giorno e mese in cifre, senza
+        anno: «Lunedì 9/11», «lun. 09.11» */
+  re = new RegExp("(?:" + RE_GSETT + "|" + RE_GSETT_BREVE + ")\\s+(\\d{1,2})[\\/.](\\d{1,2})(?![\\/.]?\\d)", "gi");
+  while((m = re.exec(t))){
+    var mm2 = Number(m[2]), gg2 = Number(m[1]), aa2 = annoPerMese(mm2, anni, gg2);
+    if(dataValida(aa2, mm2, gg2)) aggiungi(isoData(aa2, mm2, gg2), m.index, m.index + m[0].length, m[0]);
+  }
+
+  /* 3. intervallo per esteso: dal 25 al 31 agosto 2027 */
+  re = new RegExp("\\bdal\\s+(\\d{1,2})\\s+al\\s+(\\d{1,2})\\s+(" + RE_MESE_TUTTI + ")(?:\\s+(\\d{4}))?", "gi");
+  while((m = re.exec(t))){
+    var mm3 = numeroMese(m[3]);
     var aa3 = m[4] ? Number(m[4]) : annoPerMese(mm3, anni, Number(m[1]));
     var a1 = dataValida(aa3, mm3, Number(m[1])) ? isoData(aa3, mm3, Number(m[1])) : null;
     var a2 = dataValida(aa3, mm3, Number(m[2])) ? isoData(aa3, mm3, Number(m[2])) : null;
@@ -5006,9 +5036,9 @@ function trovaDate(riga, anni, contesto){
   }
 
   /* 4. intervallo per esteso senza «dal»: 14-18 settembre */
-  re = new RegExp("\\b(\\d{1,2})\\s*-\\s*(\\d{1,2})\\s+(" + RE_MESE + ")(?:\\s+(\\d{4}))?\\b", "gi");
+  re = new RegExp("\\b(\\d{1,2})\\s*-\\s*(\\d{1,2})\\s+(" + RE_MESE_TUTTI + ")(?:\\s+(\\d{4}))?(?![A-Za-z0-9])", "gi");
   while((m = re.exec(t))){
-    var mm4 = MESI_NOME.indexOf(m[3].toLowerCase()) + 1;
+    var mm4 = numeroMese(m[3]);
     var aa4 = m[4] ? Number(m[4]) : annoPerMese(mm4, anni, Number(m[1]));
     var b1 = dataValida(aa4, mm4, Number(m[1])) ? isoData(aa4, mm4, Number(m[1])) : null;
     var b2 = dataValida(aa4, mm4, Number(m[2])) ? isoData(aa4, mm4, Number(m[2])) : null;
@@ -5017,9 +5047,9 @@ function trovaDate(riga, anni, contesto){
 
   /* 5. data per esteso: giovedì 3 settembre 2026, il 9 settembre p.v.,
         e il primo del mese scritto «1° dicembre» */
-  re = new RegExp("(?:(" + RE_GSETT + ")\\s+)?\\b(\\d{1,2})(?:\\s*[°º])?\\s+(" + RE_MESE + ")(?:\\s+(\\d{4}))?\\b", "gi");
+  re = new RegExp("(?:(" + RE_GSETT + "|" + RE_GSETT_BREVE + ")\\s+)?\\b(\\d{1,2})(?:\\s*[°º])?\\s+(" + RE_MESE_TUTTI + ")(?:\\s+(\\d{4}))?(?![A-Za-z0-9])", "gi");
   while((m = re.exec(t))){
-    var mm5 = MESI_NOME.indexOf(m[3].toLowerCase()) + 1;
+    var mm5 = numeroMese(m[3]);
     var aa5 = m[4] ? Number(m[4]) : annoPerMese(mm5, anni, Number(m[2]));
     if(dataValida(aa5, mm5, Number(m[2])))
       aggiungi(isoData(aa5, mm5, Number(m[2])), m.index, m.index + m[0].length, m[0]);
@@ -5082,7 +5112,10 @@ function trovaOrari(riga){
 
   /* alcuni documenti scrivono anche i secondi, «16:00:00» o «16.00.00»: si
      leggono e si lasciano cadere, perché la convocazione si scrive 16:00 */
-  re = /\bdalle\s+(?:ore\s+)?(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s+alle\s+(?:ore\s+)?(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?(?![:.]?\d)/gi;
+  /* dopo «dalle», «alle», «ore» e «h» l'orario si scrive anche con la
+     virgola o con la «h», «ore 15,30», «h. 15h30»: la parola davanti basta a
+     dire che non è un numero qualsiasi */
+  re = /\bdalle\s+(?:(?:ore|h)\.?\s*)?(\d{1,2})[:.,h](\d{2})(?:[:.]\d{2})?\s+alle\s+(?:(?:ore|h)\.?\s*)?(\d{1,2})[:.,h](\d{2})(?:[:.]\d{2})?(?![:.,]?\d)/gi;
   while((m = re.exec(t))){
     presi.push([m.index, m.index + m[0].length]);
     esito.push({ora: dueCifre(Number(m[1])) + ":" + dueCifre(Number(m[2])), da: m.index, a: m.index + m[0].length, fine: false});
@@ -5092,9 +5125,12 @@ function trovaOrari(riga){
   /* l'intervallo delle tabelle: «14.30 – 16.30», «ore 9:00-11:00». La
      normalizzazione ha già ridotto lineetta e trattino breve al trattino
      semplice, ma la forma li nomina tutti e tre per chiarezza. */
-  re = /(?:\bore\s+)?\b(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s*[-–—]\s*(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?(?![:.]?\d)/gi;
+  re = /(?:\b(?:ore|h)\.?\s*)?\b(\d{1,2})[:.,h](\d{2})(?:[:.]\d{2})?\s*[-–—]\s*(?:(?:ore|h)\.?\s*)?(\d{1,2})[:.,h](\d{2})(?:[:.]\d{2})?(?![:.,]?\d)/gi;
   while((m = re.exec(t))){
     var h1 = Number(m[1]), m1 = Number(m[2]), h2 = Number(m[3]), m2 = Number(m[4]);
+    /* con la virgola può essere un prezzo, «€ 12,50 - 15,00»: non è un orario */
+    if(/,/.test(m[0]) && (/[€$]\s*$/.test(t.slice(Math.max(0, m.index - 3), m.index)) ||
+                          /^\s*(?:€|euro)/i.test(t.slice(m.index + m[0].length)))) continue;
     if(h1 > 23 || m1 > 59 || h2 > 23 || m2 > 59) continue;
     if(!libero(m.index, m.index + m[0].length)) continue;
     presi.push([m.index, m.index + m[0].length]);
@@ -5102,7 +5138,15 @@ function trovaOrari(riga){
     esito.push({ora: dueCifre(h2) + ":" + dueCifre(m2), da: m.index, a: m.index + m[0].length, fine: true});
   }
 
-  re = /\bore\s+(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?(?![:.]?\d)/gi;
+  re = /\b(?:ore|h)\.?\s*(\d{1,2})[:.,h](\d{2})(?:[:.]\d{2})?(?![:.,]?\d)/gi;
+  while((m = re.exec(t))) aggiungi(Number(m[1]), Number(m[2]), m.index, m.index + m[0].length);
+
+  /* «alle 15,30», «alle 15.30» senza «ore» */
+  re = /\balle\s+(\d{1,2})[:.,](\d{2})(?![:.,]?\d)/gi;
+  while((m = re.exec(t))) aggiungi(Number(m[1]), Number(m[2]), m.index, m.index + m[0].length);
+
+  /* «15h30»: la «h» fra le cifre non lascia dubbi */
+  re = /\b(\d{1,2})h(\d{2})\b/gi;
   while((m = re.exec(t))) aggiungi(Number(m[1]), Number(m[2]), m.index, m.index + m[0].length);
 
   /* con i secondi a zero l'orario si riconosce anche da solo, «alle 16:00:00»:
@@ -5122,11 +5166,68 @@ function trovaOrari(riga){
 
 /* ---------- la riga del calendario dei consigli ---------- */
 /* Nella tabella dei consigli di classe una riga è fatta del giorno, quando
-   c'è, dell'elenco delle classi e dell'orario, scritto anche con la virgola:
-   «Lunedì 5 ottobre 1A- 1B 15,00», «1ASA- 1BSA 15,00». La virgola, che altrove
-   resta fuori per scelta, qui è accettata perché la riga non contiene
-   nient'altro: tolto il giorno, restano soltanto classi e orario.
-   Restituisce l'orario nella forma di trovaOrari, e le classi elencate. */
+   c'è, dell'elenco delle classi e dell'orario. Le scuole la scrivono in molti
+   modi, e tutti valgono:
+   - il giorno sulla stessa riga, «Lunedì 5 ottobre 1A- 1B 15,00», oppure su
+     una riga sua, con le classi nelle righe che seguono;
+   - la classe attaccata, «1BSA», con uno spazio, «1 BSA», con il segno di
+     grado o l'accento, «1° BSA», «1^BSA», «1ª BSA», con il trattino, «1-BSA»,
+     oppure con il livello in numeri romani, «I BSA»;
+   - le classi separate da trattino, virgola, punto e virgola, barra, «e»,
+     «+» o da un semplice spazio, con «Classe» o «Classi» davanti;
+   - l'orario dopo le classi o prima, con la virgola, il punto, i due punti o
+     la «h», «15,00», «15.00», «15:00», «15h00», preceduto o no da «ore»,
+     «h.», «alle», anche come intervallo, «15,00 - 16,00»; con «ore» davanti
+     basta l'ora sola, «ore 15».
+   La virgola, che altrove resta fuori per scelta, qui è accettata perché la
+   riga non contiene nient'altro: tolto il giorno, restano soltanto classi e
+   orario.
+   Restituisce l'orario nella forma di trovaOrari, e le classi elencate
+   scritte attaccate, come nelle Impostazioni. */
+var RE_LIVELLO_CELLA = "(?:\\d(?:\\s*[°º^ª]\\s*|\\s*-\\s*|\\s?)|(?:IV|V|I{1,3})(?:\\s*[°º^ª]\\s*|\\s*-\\s*|\\s))";
+var RE_CLASSE_CELLA = RE_LIVELLO_CELLA + "[A-Z]{1,4}(?![A-Za-z0-9])";
+var RE_ELENCO_CELLA = "(?:[Cc]lass[ei]\\s*:?\\s*)?" + RE_CLASSE_CELLA +
+                      "(?:(?:\\s*(?:[-,;/&+]|\\be\\b)\\s*|\\s+)" + RE_CLASSE_CELLA + ")*";
+var ROMANI = {I: 1, II: 2, III: 3, IV: 4, V: 5};
+
+function classiDiCella(s){
+  var re = new RegExp(RE_CLASSE_CELLA, "g"), m, esito = [];
+  while((m = re.exec(s))){
+    var liv = m[0].match(/^(\d|IV|V|I{1,3})/)[1];
+    var sez = m[0].slice(liv.length).replace(/[°º^ª\s\-]/g, "");
+    esito.push(String(ROMANI[liv] || liv) + sez);
+  }
+  return esito;
+}
+
+/* l'orario che occupa da solo tutto il pezzo di riga: «15,00», «ore 15»,
+   «dalle 15.00 alle 16.00», «15h00 - 16h00» */
+function oraDiCella(s){
+  var t = String(s).trim().replace(/^[-|,;:]\s*/, "").replace(/\s*[-|,;:]$/, "").trim();
+  var PRE = "(?:(?:dalle|alle)\\s+)?(?:(?:ore|h)\\.?\\s*)?";
+  var ORA = "(\\d{1,2})\\s*[,.:h]\\s*(\\d{2})";
+  var m = t.match(new RegExp("^" + PRE + ORA + "(?:\\s*(?:-|/|alle|a)\\s*(?:(?:ore|h)\\.?\\s*)?" + ORA + ")?$", "i"));
+  var conPre = t.match(/^(?:(?:dalle|alle)\s+)?(?:ore|h)\.?\s*(\d{1,2})(?:\s*(?:-|alle|a)\s*(?:(?:ore|h)\.?\s*)?(\d{1,2}))?$/i);
+  var h1, m1, h2, m2;
+  if(m){ h1 = Number(m[1]); m1 = Number(m[2]); if(m[3]){ h2 = Number(m[3]); m2 = Number(m[4]); } }
+  else if(conPre){ h1 = Number(conPre[1]); m1 = 0; if(conPre[2]){ h2 = Number(conPre[2]); m2 = 0; } }
+  else return null;
+  if(h1 > 23 || m1 > 59 || (h2 !== undefined && (h2 > 23 || m2 > 59))) return null;
+  var esito = [{ora: dueCifre(h1) + ":" + dueCifre(m1), fine: false}];
+  if(h2 !== undefined) esito.push({ora: dueCifre(h2) + ":" + dueCifre(m2), fine: true});
+  return esito;
+}
+
+/* una riga che porta soltanto classi, o soltanto un orario: nelle tabelle
+   estratte cella per cella la classe e l'orario della stessa riga possono
+   finire su due righe del testo */
+function soloClassi(riga){
+  return new RegExp("^\\s*" + RE_ELENCO_CELLA + "\\s*$").test(normalizzaTesto(riga));
+}
+function soloOra(riga){
+  return !!(riga.trim() && oraDiCella(normalizzaTesto(riga)));
+}
+
 function rigaDiClassi(riga, date){
   var t = normalizzaTesto(riga);
   var da = 0;
@@ -5136,14 +5237,27 @@ function rigaDiClassi(riga, date){
     da = Math.max.apply(null, date.map(function(d){ return d.a; }));
   }
   var resto = t.slice(da);
-  var m = resto.match(/^(\s*)((?:\d[A-Z]{1,4}\s*[-,]?\s*)+?)\s+(\d{1,2})[,.:](\d{2})\s*$/);
-  if(!m) return null;
-  var hh = Number(m[3]), mi = Number(m[4]);
-  if(hh > 23 || mi > 59) return null;
-  var posOra = da + resto.search(/\d{1,2}[,.:]\d{2}\s*$/);
+  var fine = t.replace(/\s+$/, "").length;
+  var elenco = null, orari = null, posOra = da;
+
+  /* prima le classi, poi l'orario */
+  var m = resto.match(new RegExp("^(\\s*)(" + RE_ELENCO_CELLA + ")(.*)$"));
+  if(m && (orari = oraDiCella(m[3]))){
+    elenco = m[2];
+    posOra = da + m[1].length + m[2].length;
+  }else{
+    /* prima l'orario, poi le classi */
+    m = resto.match(new RegExp("^(.*?)(\\s*[-|,;:]?\\s*)(" + RE_ELENCO_CELLA + ")\\s*$"));
+    if(m && m[1].trim() && (orari = oraDiCella(m[1]))){
+      elenco = m[3];
+      posOra = da + m[1].search(/\S/);
+      fine = da + m[1].replace(/\s+$/, "").length;
+    }
+  }
+  if(!elenco) return null;
   return {
-    orari: [{ora: dueCifre(hh) + ":" + dueCifre(mi), da: posOra, a: t.replace(/\s+$/, "").length, fine: false}],
-    classi: m[2].split(/[\s,\-]+/).filter(Boolean)
+    orari: orari.map(function(o){ return {ora: o.ora, da: posOra, a: fine, fine: o.fine}; }),
+    classi: classiDiCella(elenco)
   };
 }
 
@@ -5362,6 +5476,16 @@ function trovaLinkRiunione(testo){
    I punti sono riportati nella formulazione esatta del documento. */
 var RE_ODG = new RegExp(spezzata("ordine del giorno"));
 var RE_SEGUENTE = new RegExp(spezzata("seguent") + " ?[ei]");
+/* Il numero del punto si scrive in molti modi: «1.», «1)», «1°)», «1°.»,
+   «1:», «1 -», «1-Insediamento», e anche senza nessun segno, «1 Insediamento»,
+   come capita ai PDF che perdono il punto dell'elenco numerato. Senza segno
+   vale soltanto se segue una parola vera con l'iniziale maiuscola: «2 ASA» è
+   una classe, non un punto. */
+var RE_PUNTO_ODG = /^\s*(\d{1,2})\s*(?:[°º]\s*)?(?:[).:]\s*|-\s*(?=[A-Za-zÀ-ÿ«"(])|\s+(?=[A-ZÀ-Ú][a-zà-ú]{2,}))(.*)$/;
+/* i sottopunti: «a)», «a.», «a -», e gli elenchi puntati sotto un punto che
+   annuncia un elenco con i due punti */
+var RE_SOTTO_ODG = /^\s*([a-z])\s*(?:[).]|\s-)\s+(.+)$/;
+var RE_PUNTATO_ODG = /^\s*[-•▪◦*·]\s+(.+)$/;
 function trovaOdg(righe){
   var i, inizio = -1;
   function annuncia(t){
@@ -5381,41 +5505,68 @@ function trovaOdg(righe){
   }
   /* L'annuncio può anche non dire «seguente»: «si comunica il calendario e
      l'o.d.g. dei consigli di classe». Vale allora soltanto se l'elenco
-     comincia dal punto 1 entro le due righe piene che seguono, dove la frase
-     dell'annuncio può andare a capo. */
+     comincia dal punto 1 entro le cinque righe piene che seguono, dove la
+     frase dell'annuncio può andare a capo e può stare un avviso breve, come
+     quello sui rappresentanti ricevuti per i primi punti; e soltanto se
+     l'elenco prosegue almeno con il punto 2. */
+  var diRipiego = false;
   if(inizio < 0){
     for(i = 0; i < righe.length && inizio < 0; i++){
       var ann = senzaAccenti(righe[i]);
-      if(!RE_ODG.test(ann) && !/(?:^|[^a-z])o\.\s?d\.\s?g\./.test(ann)) continue;
+      /* «o.d.g.», «O.d.G», «odg», «OdG» */
+      if(!RE_ODG.test(ann) && !/(?:^|[^a-z])o\.?\s?d\.?\s?g\.?(?![a-z])/.test(ann)) continue;
       var j, piene = 0;
-      for(j = i + 1; j < righe.length && piene < 3; j++){
+      diRipiego = true;
+      for(j = i + 1; j < righe.length && piene < 6; j++){
         if(!righe[j].trim()) continue;
         piene++;
-        if(/^\s*1\s*[).]\s*\S/.test(normalizzaTesto(righe[j]))){ inizio = j; break; }
+        var primo = normalizzaTesto(righe[j]).match(RE_PUNTO_ODG);
+        if(primo && primo[1] === "1" && primo[2].trim()){ inizio = j; break; }
       }
     }
   }
   if(inizio < 0) return {punti: [], da: -1, a: -1};
+  /* fra l'annuncio e il punto 1 può stare un avviso breve: il punto 1 si
+     cerca entro le cinque righe piene che seguono */
+  if(!diRipiego){
+    var pieneDopo = 0, h;
+    for(h = inizio; h < righe.length && pieneDopo < 6; h++){
+      if(!righe[h].trim()) continue;
+      pieneDopo++;
+      var uno = normalizzaTesto(righe[h]).trim().match(RE_PUNTO_ODG);
+      if(uno && uno[1] === "1" && uno[2].trim()){ inizio = h; break; }
+    }
+  }
 
-  var punti = [], atteso = 1, corrente = null, ultimaRiga = inizio;
+  var punti = [], atteso = 1, corrente = null, ultimaRiga = inizio, nelSotto = false;
   for(i = inizio; i < righe.length; i++){
     var riga = righe[i];
     var norm = normalizzaTesto(riga);
     if(!riga.trim()) continue;
 
-    var mp = norm.match(/^\s*(\d{1,2})\s*[).]\s*(.*)$/) || norm.match(/^\s*(\d{1,2})\s*-\s+(.*)$/);
-    if(mp && Number(mp[1]) === atteso){
-      corrente = {testo: riga.trim().replace(/^\s*\d{1,2}\s*[).]\s*/, "").replace(/^\s*\d{1,2}\s*[-–—]\s+/, ""), sotto: []};
+    /* la normalizzazione cambia un segno con un segno: le posizioni restano,
+       e il testo del punto si prende dalla riga originale */
+    var mp = norm.trim().match(RE_PUNTO_ODG);
+    if(mp && Number(mp[1]) === atteso && mp[2].trim()){
+      corrente = {testo: riga.trim().slice(norm.trim().length - mp[2].length).trim(), sotto: []};
       punti.push(corrente);
       atteso++;
       ultimaRiga = i;
+      nelSotto = false;
       continue;
     }
 
-    var ms = norm.match(/^\s*([a-z])\s*[).]\s+(.+)$/);
+    var ms = norm.trim().match(RE_SOTTO_ODG);
+    /* il puntato vale come sottopunto sotto un punto che finisce con i due
+       punti, o dopo un altro sottopunto non chiuso dal punto fermo */
+    var aperto = corrente && (nelSotto ? !/\.\s*$/.test(corrente.sotto[corrente.sotto.length - 1])
+                                       : /:\s*$/.test(corrente.testo));
+    if(!ms && aperto) ms = norm.trim().match(RE_PUNTATO_ODG);
     if(ms && corrente){
-      corrente.sotto.push(riga.trim().replace(/^\s*[a-z]\s*[).]\s*/i, ""));
+      var testoSotto = ms[ms.length - 1];
+      corrente.sotto.push(riga.trim().slice(norm.trim().length - testoSotto.length).trim());
       ultimaRiga = i;
+      nelSotto = true;
       continue;
     }
 
@@ -5424,21 +5575,30 @@ function trovaOdg(righe){
     /* una riga che non apre un punto nuovo continua quello aperto, a meno che
        il punto sia già chiuso da un punto fermo, oppure la riga sia tutta in
        maiuscolo o una firma: allora l'elenco è finito */
+    var ultimoTesto = nelSotto ? corrente.sotto[corrente.sotto.length - 1] : corrente.testo;
     var tuttoMaiuscolo = norm === norm.toUpperCase() && /[A-Z]/.test(norm);
     var firma = /^(IL|LA)\s+(DIRIGENTE|PRESIDENTE)|^Il\s+Dirigente|^Documento firmato|^Prof\.ssa|^Dott\.ssa/i.test(norm.trim());
     /* il punto fermo chiude il punto, ma non quello di un'abbreviazione,
        «Avviso pubblico prot.» / «239372 del 12/10/2026», e non quando la
        riga che segue comincia in minuscolo o con una cifra: allora la frase
        continua, qualunque sia il rientro della riga */
-    var abbreviazione = /(?:^|[\s(])(?:prot|n|nn|nr|art|artt|L|D\.?\s?Lgs|D\.?\s?M|D\.?\s?P\.?\s?R|c|co|lett|pag|pagg|cfr|reg)\.\s*$/i.test(corrente.testo);
+    var abbreviazione = /(?:^|[\s(])(?:prot|n|nn|nr|art|artt|L|D\.?\s?Lgs|D\.?\s?M|D\.?\s?P\.?\s?R|c|co|lett|pag|pagg|cfr|reg)\.\s*$/i.test(ultimoTesto);
     var prosegue = /^\s*[a-zà-ú0-9(«"]/.test(norm);
-    var chiuso = /\.\s*$/.test(corrente.testo) && !abbreviazione && !prosegue;
+    var chiuso = /\.\s*$/.test(ultimoTesto) && !abbreviazione && !prosegue;
     if(tuttoMaiuscolo || firma || chiuso) break;
 
+    /* la riga che va a capo dentro un sottopunto continua il sottopunto */
+    if(nelSotto){
+      var us = corrente.sotto.length - 1;
+      corrente.sotto[us] = (corrente.sotto[us] + " " + riga.trim()).replace(/\s+/g, " ").trim();
+      ultimaRiga = i;
+      continue;
+    }
     corrente.testo = (corrente.testo + " " + riga.trim()).replace(/\s+/g, " ").trim();
     ultimaRiga = i;
   }
 
+  if(diRipiego && punti.length < 2) return {punti: [], da: -1, a: -1};
   return {punti: punti, da: inizio, a: ultimaRiga};
 }
 
@@ -6014,13 +6174,151 @@ function leggiUscita(righe, oggetto, anni, config, posizioni){
    IL GIRO COMPLETO
    ============================================================ */
 
+/* ---------- i refusi ---------- */
+/* Un documento può arrivare con errori di battitura o con lettere perse
+   nell'estrazione: «Novmbre», «Mercoldì», «ordne del giono», «consilgio»,
+   «Nov embre». Prima della lettura le parole che le regole cercano si
+   rimettono a posto: una parola che differisce da una di queste per una
+   lettera (mancante, in più, sbagliata o scambiata con la vicina), o per due
+   lettere perse nelle parole lunghe, prende la forma giusta, con le
+   maiuscole che aveva.
+   Le protezioni:
+   - la parola deve cominciare con la stessa lettera ed essere lunga almeno
+     cinque lettere, perché le parole corte si somigliano tutte;
+   - non si toccano le altre forme della stessa parola, «giorni», «consigli»,
+     «presenze», né le parole vere che somigliano a quelle cercate, «presenta»,
+     «aprire», «collega», né i nomi, «Gennaro», «Domenico»;
+   - se la parola è vicina a due parole cercate diverse, resta com'è.
+   Due pezzi separati da uno spazio si uniscono soltanto quando insieme danno
+   esattamente un mese o un giorno della settimana. */
+var PAROLE_CERCATE = MESI_NOME.filter(function(m){ return m.length >= 6; }).concat(
+  ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica",
+   "ordine", "giorno", "seguente", "seguenti", "consiglio", "consigli", "classe", "classi",
+   "convocazione", "convocato", "convocata", "convocati", "convocate", "collegio", "docente", "docenti",
+   "dipartimento", "dipartimenti", "scrutinio", "scrutini", "rappresentanti", "rappresentante",
+   "genitori", "studenti", "oggetto", "circolare", "protocollo", "calendario", "presenza",
+   "distanza", "insediamento", "integrazione", "riunione", "seduta", "dirigente", "scolastico"]);
+var PAROLE_VERE = ["presenta", "presente", "presenti", "presentare", "aprire", "collega", "colleghi",
+  "colleghe", "gennaro", "domenico", "domeniche", "sabati", "casse", "cassa", "classico", "classica",
+  "ordina", "ordinato", "ordini", "giorni", "seduto", "seduti", "sedute", "oggetti", "circolari",
+  "convocazioni", "riunioni", "presenze", "distanze", "protocolli", "calendari", "dirigenti",
+  "scolastica", "scolastici", "scolastiche", "integrazioni", "studente", "genitore", "consigliere",
+  "consiglieri", "consigliato", "maggiore", "maggiori", "giugni", "ottone", "settembrini"];
+
+/* distanza fra due parole: inserimenti, cancellazioni, sostituzioni e lo
+   scambio di due lettere vicine valgono uno */
+function distanzaParole(a, b){
+  var i, j, d = [];
+  for(i = 0; i <= a.length; i++){ d[i] = [i]; }
+  for(j = 0; j <= b.length; j++) d[0][j] = j;
+  for(i = 1; i <= a.length; i++){
+    for(j = 1; j <= b.length; j++){
+      var costo = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + costo);
+      if(i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+
+function chiaveParola(s){ return senzaAccenti(s).replace(/[^a-z]/g, ""); }
+
+/* la parola corta è la lunga con qualche lettera persa */
+function sottosequenza(corta, lunga){
+  var i = 0, j;
+  for(j = 0; j < lunga.length && i < corta.length; j++) if(lunga[j] === corta[i]) i++;
+  return i === corta.length;
+}
+
+/* la parola cercata a cui una parola scritta male somiglia, oppure "" */
+function parolaGiusta(scritta){
+  var k = chiaveParola(scritta);
+  if(k.length < 5) return "";
+  if(PAROLE_VERE.indexOf(k) >= 0) return "";
+  var esatte = PAROLE_CERCATE.map(chiaveParola);
+  if(esatte.indexOf(k) >= 0) return "";
+  var trovate = [];
+  PAROLE_CERCATE.forEach(function(p, n){
+    var c = esatte[n];
+    if(c[0] !== k[0] || Math.abs(c.length - k.length) > 2) return;
+    /* le altre forme della stessa parola: cambia soltanto la vocale finale,
+       oppure la parola scritta è l'inizio di quella cercata e finisce in
+       vocale («consigli» per «consiglio»), oppure la continua */
+    if(/[aeiou]$/.test(k) && k.slice(0, -1) === c.slice(0, -1)) return;
+    if(/[aeiou]$/.test(k) && c.indexOf(k) === 0) return;
+    if(k.indexOf(c) === 0) return;
+    /* una lettera cambiata nella desinenza è un'altra forma della parola,
+       «convocare» e «convocate», «rappresentanze» e «rappresentante» */
+    if(k.length === c.length && /[aeiou]$/.test(k) && k.slice(0, -3) === c.slice(0, -3) &&
+       k.split("").filter(function(x, n){ return x !== c[n]; }).length === 1) return;
+    /* due lettere di differenza valgono soltanto nelle parole lunghe e
+       soltanto quando sono due lettere perse: «Novmbe» è «novembre», ma
+       «inserimento» non è «insediamento» */
+    var d = distanzaParole(k, c);
+    var ok = d <= 1 || (d === 2 && c.length >= 8 && k.length >= 6 && sottosequenza(k, c));
+    if(ok && trovate.indexOf(p) < 0) trovate.push(p);
+  });
+  return trovate.length === 1 ? trovate[0] : "";
+}
+
+/* la parola giusta con le maiuscole della parola scritta */
+function comeScritta(giusta, scritta){
+  if(scritta.length > 1 && scritta === scritta.toUpperCase()) return giusta.toUpperCase();
+  if(scritta[0] === scritta[0].toUpperCase()) return giusta[0].toUpperCase() + giusta.slice(1);
+  return giusta;
+}
+
+function correggiRefusi(testo){
+  var unibili = MESI_NOME.concat(["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]);
+  var chiaviUnibili = unibili.map(chiaveParola);
+  return String(testo || "").split(/\r?\n/).map(function(riga){
+    /* i due pezzi di una parola spezzata: «Nov embre», «Mer coledì». I pezzi
+       pari sono le parole, i dispari quello che sta fra l'una e l'altra. */
+    var pezzi = riga.split(/([^A-Za-zÀ-ÿ]+)/), k;
+    for(k = 0; k + 2 < pezzi.length; k += 2){
+      var a = pezzi[k], b = pezzi[k + 2];
+      if(pezzi[k + 1] !== " " || a.length < 2 || b.length < 2) continue;
+      var n = chiaviUnibili.indexOf(chiaveParola(a + b));
+      if(n < 0 || chiaviUnibili.indexOf(chiaveParola(a)) >= 0 || chiaviUnibili.indexOf(chiaveParola(b)) >= 0) continue;
+      pezzi.splice(k, 3, comeScritta(unibili[n], a));
+    }
+    riga = pezzi.join("");
+    return riga.replace(/[A-Za-zÀ-ÿ]+/g, function(parola){
+      var giusta = parolaGiusta(parola);
+      return giusta ? comeScritta(giusta, parola) : parola;
+    });
+  }).join("\n");
+}
+
+/* Le tabelle estratte cella per cella mettono la classe e l'orario della
+   stessa riga su due righe del testo, nell'uno o nell'altro ordine: «2 ASA» e
+   sotto «14,30». Le due righe si ricompongono nella prima, e la seconda resta
+   vuota, così che i numeri delle righe non cambino. */
+function ricomponiCelle(righe){
+  var i, j;
+  for(i = 0; i < righe.length; i++){
+    if(!righe[i].trim()) continue;
+    var a = soloClassi(righe[i]), b = !a && soloOra(righe[i]);
+    if(!a && !b) continue;
+    for(j = i + 1; j < righe.length && !righe[j].trim(); j++);
+    if(j >= righe.length) continue;
+    if((a && soloOra(righe[j])) || (b && soloClassi(righe[j]))){
+      righe[i] = righe[i].replace(/\s+$/, "") + " " + righe[j].trim();
+      righe[j] = "";
+    }
+  }
+  return righe;
+}
+
 function leggiARegole(testo, opzioni){
   opzioni = opzioni || {};
   var config = opzioni.config || {};
   var classi = (config.classi || []).slice();
   var anni = anniScolastici(config.anno);
   var prot = opzioni.protocollo || {};
+  testo = correggiRefusi(testo);
   var righe = String(testo || "").split(/\r?\n/);
+  ricomponiCelle(righe);
 
   var circolare = trovaCircolare(righe);
   var oggetto = trovaOggetto(righe);
@@ -6080,9 +6378,10 @@ function leggiARegole(testo, opzioni){
     }
 
     var date = trovaDate(riga, anni, contesto);
-    var orari = trovaOrari(riga);
-    var elenco = orari.length ? null : rigaDiClassi(riga, date);
-    if(elenco) orari = elenco.orari;
+    /* la riga del calendario dei consigli si legge per intero, classi e
+       orario: vale anche quando l'orario da solo sarebbe riconosciuto */
+    var elenco = rigaDiClassi(riga, date);
+    var orari = elenco ? elenco.orari : trovaOrari(riga);
 
     /* la riga di classi e orario è una riga della tabella, non l'intestazione
        del blocco che segue */
@@ -6282,7 +6581,19 @@ function leggiARegole(testo, opzioni){
     var categoria = cat.categoria;
     /* le classi stanno di solito sulla riga della data; quando il giorno ha
        una riga sua, stanno su quella dell'orario, che la seduta ha preso con sé */
-    var perClassi = classiDaRiga(righe[ev.righe[0]] || "", classi);
+    var perClassi = {classi: [], modo: "", livelli: []};
+    /* la riga del calendario dice da sé quali classi elenca, in qualunque
+       forma le scriva: si confrontano con quelle delle Impostazioni */
+    ev.righe.forEach(function(n){
+      if(!analisi[n] || !analisi[n].elenco) return;
+      classi.forEach(function(c){
+        var pulita = String(c).toUpperCase().replace(/[^0-9A-Z]/g, "");
+        if(analisi[n].elenco.indexOf(pulita) >= 0 && perClassi.classi.indexOf(c) < 0){
+          perClassi.classi.push(c); perClassi.modo = "nome";
+        }
+      });
+    });
+    if(!perClassi.modo) perClassi = classiDaRiga(righe[ev.righe[0]] || "", classi);
     for(var r = 1; r < ev.righe.length && !perClassi.modo; r++) perClassi = classiDaRiga(righe[ev.righe[r]] || "", classi);
     /* una riga del calendario che elenca soltanto classi altrui riguarda
        quelle classi, non tutte */
@@ -10298,7 +10609,7 @@ function puntiDaTesto(t){
 
 /* ---------- i comandi dell'inserimento guidato ---------- */
 /* il passaggio scelto dice una data o un'ora anche in forme che le regole
-   del documento non usano, «19.11.2026», «h 14,30»: il docente l'ha indicato */
+   del documento non usano, «19 11 2026»: il docente l'ha indicato */
 function dataDaPassaggio(t){
   var d = trovaDate(t, anniPerLaLettura(), {mese: 0}).filter(function(x){ return !x.fine; });
   if(d.length) return d[0].iso;
