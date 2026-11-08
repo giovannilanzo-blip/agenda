@@ -1142,11 +1142,11 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
       </div>
       <div class="campo solo-personale" id="riga-inizio" hidden>
         <label for="f-inizio">Ora di inizio <span>(facoltativa)</span></label>
-        <input id="f-inizio" name="inizio" type="time">
+        <input id="f-inizio" name="inizio" type="text" inputmode="numeric" class="campo-ora" placeholder="hh:mm" maxlength="5" autocomplete="off">
       </div>
       <div class="campo solo-personale" id="riga-fine" hidden>
         <label for="f-fine">Ora di fine <span>(facoltativa)</span></label>
-        <input id="f-fine" name="fine" type="time">
+        <input id="f-fine" name="fine" type="text" inputmode="numeric" class="campo-ora" placeholder="hh:mm" maxlength="5" autocomplete="off">
       </div>
       <div class="campo largo solo-personale" id="riga-luogo" hidden>
         <label for="f-luogo">Luogo e indirizzo</label>
@@ -1238,11 +1238,11 @@ label.campo input,label.campo textarea{font-family:"Source Sans 3","Segoe UI",sy
       </div>
       <div class="campo">
         <label for="f-att-inizio">Inizio</label>
-        <input id="f-att-inizio" type="time" step="300">
+        <input id="f-att-inizio" type="text" inputmode="numeric" class="campo-ora" placeholder="hh:mm" maxlength="5" autocomplete="off">
       </div>
       <div class="campo">
         <label for="f-att-fine">Fine</label>
-        <input id="f-att-fine" type="time" step="300">
+        <input id="f-att-fine" type="text" inputmode="numeric" class="campo-ora" placeholder="hh:mm" maxlength="5" autocomplete="off">
       </div>
       <fieldset class="campo largo att-compresenza">
         <legend>Docenti in compresenza</legend>
@@ -1831,6 +1831,21 @@ function annoScolastico(){
   if(stato.config.anno) return stato.config.anno;
   var d=new Date(), a=d.getFullYear();
   return d.getMonth()>=8 ? a+"/"+String(a+1).slice(2) : (a-1)+"/"+String(a).slice(2);
+}
+/* Gli orari si scrivono sempre da 0:00 a 23:59, nella forma «18:00»,
+   qualunque formato usi il computer o il telefono: per questo i campi
+   dell'ora sono campi di testo dell'agenda e non il selettore del browser,
+   che segue le impostazioni del sistema. Si accettano «18», «18:00»,
+   «18.00», «18,00», «1800», «9:30», «930». Restituisce "" per un campo
+   vuoto e null per un orario che non esiste. */
+function oraNormale(s){
+  var t=String(s==null?"":s).trim();
+  if(!t) return "";
+  var m=t.match(/^(\d{1,2})(?:\s*[:.,h]\s*(\d{2}))?$/i) || t.match(/^(\d{1,2})(\d{2})$/);
+  if(!m) return null;
+  var h=Number(m[1]), mi=Number(m[2]||0);
+  if(h>23 || mi>59) return null;
+  return String(h).padStart(2,"0")+":"+String(mi).padStart(2,"0");
 }
 function nuovoId(){
   return "v"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -3815,8 +3830,8 @@ document.getElementById("form-voce").addEventListener("submit", function(ev){
     /* niente di scolastico su una voce personale: l'ora sta in inizio e fine */
     v.classe=""; v.materia=""; v.ora=""; v.periodo=""; v.fonte=""; v.link="";
     delete v.oraConfermata;
-    v.inizio=document.getElementById("f-inizio").value;
-    v.fine=document.getElementById("f-fine").value;
+    v.inizio=oraNormale(document.getElementById("f-inizio").value)||"";
+    v.fine=oraNormale(document.getElementById("f-fine").value)||"";
     /* una fine prima dell'inizio è una svista: si scambiano */
     if(v.inizio && v.fine && v.fine<v.inizio){ var x=v.inizio; v.inizio=v.fine; v.fine=x; }
     if(!v.inizio) v.fine="";
@@ -7690,8 +7705,8 @@ function salvaAttivita(){
   if(!m) return false;
   var classe = document.getElementById("f-att-classe").value;
   var data = document.getElementById("f-att-data").value;
-  var inizio = document.getElementById("f-att-inizio").value;
-  var fine = document.getElementById("f-att-fine").value;
+  var inizio = oraNormale(document.getElementById("f-att-inizio").value) || document.getElementById("f-att-inizio").value;
+  var fine = oraNormale(document.getElementById("f-att-fine").value) || document.getElementById("f-att-fine").value;
   var argomento = document.getElementById("f-att-argomento").value.trim();
   if(!classe){ erroreAtt("Scegli la classe."); return false; }
   if(!data){ erroreAtt("Scrivi la data."); return false; }
@@ -10196,7 +10211,7 @@ function leggiFormVoce(){
   var c = M.campi;
   function val(id){ var e = document.getElementById(id); return e ? e.value : ""; }
   c.titolo = val("vm-titolo"); c.categoria = val("vm-categoria") || c.categoria; c.data = val("vm-data");
-  c.ora = val("vm-ora"); c.oraFine = val("vm-orafine"); c.classi = val("vm-classi");
+  c.ora = oraNormale(val("vm-ora")) || val("vm-ora"); c.oraFine = oraNormale(val("vm-orafine")) || val("vm-orafine"); c.classi = val("vm-classi");
   c.luogo = val("vm-luogo").trim(); c.modalita = val("vm-modalita"); c.link = val("vm-link").trim();
   c.circolare = val("vm-circolare").trim(); c.protocollo = val("vm-protocollo").trim(); c.protData = val("vm-protdata").trim();
   c.dettagli = val("vm-dettagli");
@@ -10452,8 +10467,8 @@ function schedaModificaVoce(){
        GENERI_VOCE.map(function(g){ return '<option value="' + g[0] + '"' + (g[0] === c.categoria ? ' selected' : '') + '>' + esc(g[1]) + '</option>'; }).join("") +
        '</select></div>';
   h += campoVm("vm-data", "Data", c.data, ' type="date"');
-  h += campoVm("vm-ora", "Ora di inizio", c.ora, ' type="time"');
-  h += campoVm("vm-orafine", "Ora di fine", c.oraFine, ' type="time"');
+  h += campoVm("vm-ora", "Ora di inizio", c.ora, ' type="text" inputmode="numeric" class="campo-ora" placeholder="hh:mm" maxlength="5" autocomplete="off"');
+  h += campoVm("vm-orafine", "Ora di fine", c.oraFine, ' type="text" inputmode="numeric" class="campo-ora" placeholder="hh:mm" maxlength="5" autocomplete="off"');
   h += campoVm("vm-classi", "Classe o classi", c.classi, ' list="lista-classi" placeholder="es. 5A, 5B"');
   h += campoVm("vm-luogo", "Luogo", c.luogo);
   h += '<div class="campo"><label for="vm-modalita">Modalità</label><select id="vm-modalita">' +
@@ -12323,7 +12338,39 @@ document.addEventListener("input", function(ev){
     STATO_IMPORT.prot.numero=solo;
   }
   else if(t.id==="in-prot-data") STATO_IMPORT.prot.data=formattaDataProt(t, ev);
+  else if(t.classList && t.classList.contains("campo-ora")) formattaOra(t, ev);
 });
+/* ---------- i campi dell'ora, sempre da 0 a 23 ---------- */
+/* Mentre si scrive restano soltanto cifre e due punti, e dopo due cifre i
+   due punti si mettono da sé: «1800» diventa «18:00». Uscendo dal campo
+   l'orario si completa («9» → «09:00», «930» → «09:30»); un orario che non
+   esiste, come «25:00», resta scritto ma il campo lo segnala e il modulo
+   non si salva. */
+function formattaOra(t, ev){
+  var v=t.value.replace(/[.,h]/gi, ":").replace(/[^\d:]/g, "");
+  /* «930»: 93 non è un'ora, quindi l'ora è la sola prima cifra */
+  if(v.indexOf(":")<0 && v.length>2 && !(ev && /^delete/.test(ev.inputType||""))){
+    var q = Number(v.slice(0,2))>23 ? 1 : 2;
+    v=v.slice(0,q)+":"+v.slice(q);
+  }
+  v=v.replace(/:+/g, ":").replace(/^(\d{0,2}:\d{0,2}).*$/, "$1").slice(0,5);
+  if(v!==t.value) t.value=v;
+  t.setCustomValidity("");
+}
+function chiudiOra(t){
+  var n=oraNormale(t.value);
+  if(n===null){
+    t.setCustomValidity("Orario non valido: scrivi da 0:00 a 23:59, per esempio 18:00.");
+    try{ t.reportValidity(); }catch(e){}
+    return;
+  }
+  t.setCustomValidity("");
+  if(n!==t.value) t.value=n;
+}
+document.addEventListener("change", function(ev){
+  var t=ev.target;
+  if(t && t.classList && t.classList.contains("campo-ora")) chiudiOra(t);
+}, true);
 /* le cifre della data si ricordano anche quando il campo riceve il fuoco già
    pieno, perché il tasto indietro sulla barra le confronta con quelle */
 document.addEventListener("focusin", function(ev){
