@@ -5124,10 +5124,17 @@ function trovaOrari(riga){
 
   /* l'intervallo delle tabelle: «14.30 – 16.30», «ore 9:00-11:00». La
      normalizzazione ha già ridotto lineetta e trattino breve al trattino
-     semplice, ma la forma li nomina tutti e tre per chiarezza. */
-  re = /(?:\b(?:ore|h)\.?\s*)?\b(\d{1,2})[:.,h](\d{2})(?:[:.]\d{2})?\s*[-–—]\s*(?:(?:ore|h)\.?\s*)?(\d{1,2})[:.,h](\d{2})(?:[:.]\d{2})?(?![:.,]?\d)/gi;
+     semplice, ma la forma li nomina tutti e tre per chiarezza. Anche la
+     barra separa i due orari, «14.30/18.30», ma soltanto con il punto o i
+     due punti, «12,50/15,00» può essere altro, e soltanto nella riga di
+     una tabella che comincia con il giorno, «Giovedì 28/01/27 14.30/18.30»:
+     «Giorni 14-18 settembre: 8:00/11:00» è l'orario delle lezioni, non un
+     impegno. */
+  var RE_GIORNO_IN_TESTA = /^\s*(?:(?:lun|mar|mer|gio|ven|sab|dom)[a-zì]*\.?,?\s+)?\d{1,2}(?:[\/.\-]\d{1,2}(?:[\/.\-]\d{2,4})?|\s+[a-z]+\.?(?:\s+\d{4})?)\s*[,:]?\s*(?:(?:ore|h)\.?\s*)?$/i;
+  re = /(?:\b(?:ore|h)\.?\s*)?\b(\d{1,2})[:.,h](\d{2})(?:[:.]\d{2})?\s*([-–—\/])\s*(?:(?:ore|h)\.?\s*)?(\d{1,2})[:.,h](\d{2})(?:[:.]\d{2})?(?![:.,\/]?\d)/gi;
   while((m = re.exec(t))){
-    var h1 = Number(m[1]), m1 = Number(m[2]), h2 = Number(m[3]), m2 = Number(m[4]);
+    if(m[3] === "/" && (/,/.test(m[0]) || !RE_GIORNO_IN_TESTA.test(t.slice(0, m.index)))) continue;
+    var h1 = Number(m[1]), m1 = Number(m[2]), h2 = Number(m[4]), m2 = Number(m[5]);
     /* con la virgola può essere un prezzo, «€ 12,50 - 15,00»: non è un orario */
     if(/,/.test(m[0]) && (/[€$]\s*$/.test(t.slice(Math.max(0, m.index - 3), m.index)) ||
                           /^\s*(?:€|euro)/i.test(t.slice(m.index + m[0].length)))) continue;
